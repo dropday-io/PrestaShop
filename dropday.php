@@ -37,7 +37,7 @@ class Dropday extends Module
     {
         $this->name = 'dropday';
         $this->tab = 'administration';
-        $this->version = '1.0.1';
+        $this->version = '1.0.3';
         $this->author = 'Dropday support@dropday.nl';
         $this->need_instance = 0;
 
@@ -187,7 +187,7 @@ class Dropday extends Module
         
         $order = new Order((int)$id_order);
         $old_os = $order->getCurrentOrderState();
-        if (!Validate::isLoadedObject($order) || ($old_os->id != $status->id && $old_os->paid)) {
+        if (!Validate::isLoadedObject($order)) {
             return false;
         }
         
@@ -205,7 +205,7 @@ class Dropday extends Module
                 'lastname' => $address->lastname,
                 'company_name' => $address->company,
                 'address1' => $address->address1,
-                'address2' => ($address->address2 ? $address->address2 : $address->address1),
+                'address2' => ($address->address2 ? $address->address2 : $address->address2),
                 'postcode' => $address->postcode,
                 'city' => $address->city,
                 'country' => Country::getNameById($order->id_lang, (int)$address->id_country),
@@ -241,7 +241,6 @@ class Dropday extends Module
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $this->getApiUrl('orders'));
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
-        curl_setopt($ch, CURLOPT_HEADER, 1);
         curl_setopt($ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
         curl_setopt($ch, CURLOPT_POST, 1);
@@ -262,7 +261,13 @@ class Dropday extends Module
         if (curl_errno($ch)) {
             PrestaShopLogger::addLog('[dropday] error: ' . curl_error($ch), 3, null, 'Order', (int)$id_order, true);
         } else {
-            PrestaShopLogger::addLog('[dropday] Order created' . curl_error($ch), 1, null, 'Order', (int)$id_order, true);
+            $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $result = json_decode($result, true);
+            if ($httpcode == 200) {
+                PrestaShopLogger::addLog('[dropday] Order created :#'.$result['order_id'], 1, null, 'Order', (int)$id_order, true);
+            } elseif ($httpcode == 422) {
+                PrestaShopLogger::addLog('[dropday] error: ' . json_encode($result['errors']), 3, null, 'Order', (int)$id_order, true);
+            }
             error_log(json_encode($result));
         }
         curl_close($ch);
