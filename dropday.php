@@ -37,7 +37,7 @@ class Dropday extends Module
     {
         $this->name = 'dropday';
         $this->tab = 'administration';
-        $this->version = '1.0.3';
+        $this->version = '1.0.4';
         $this->author = 'Dropday support@dropday.nl';
         $this->need_instance = 0;
 
@@ -259,14 +259,16 @@ class Dropday extends Module
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         $result = curl_exec($ch);
         if (curl_errno($ch)) {
-            PrestaShopLogger::addLog('[dropday] error: ' . curl_error($ch), 3, null, 'Order', (int)$id_order, true);
+            Logger::addLog('[dropday] error: ' . curl_error($ch), 3, null, 'Order', (int)$id_order, true);
         } else {
             $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             $result = json_decode($result, true);
             if ($httpcode == 200) {
-                PrestaShopLogger::addLog('[dropday] Order created :#'.$result['order_id'], 1, null, 'Order', (int)$id_order, true);
+                Logger::addLog('[dropday] Order created :#'.$result['order_id'], 1, null, 'Order', (int)$id_order, true);
             } elseif ($httpcode == 422) {
-                PrestaShopLogger::addLog('[dropday] error: ' . json_encode($result['errors']), 3, null, 'Order', (int)$id_order, true);
+                Logger::addLog('[dropday] Error: ' . json_encode($result['errors']), 3, null, 'Order', (int)$id_order, true);
+            } else {
+                Logger::addLog('[dropday] Unknown error', 3, $httpcode, 'Order', $id_order, true);
             }
             error_log(json_encode($result));
         }
