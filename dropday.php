@@ -37,7 +37,7 @@ class Dropday extends Module
     {
         $this->name = 'dropday';
         $this->tab = 'administration';
-        $this->version = '1.0.0';
+        $this->version = '1.0.1';
         $this->author = 'Dropday support@dropday.nl';
         $this->need_instance = 0;
 
@@ -179,14 +179,15 @@ class Dropday extends Module
         return $this->displayConfirmation($this->l('Settings updated successfully!'));
     }
     
-    public function handleOrder($id_order, OrderStateCore $status)
+    public function handleOrder($id_order, OrderState $status)
     {
         if (!$id_order || !Validate::isLoadedObject($status) || !$status->paid ) {
             return false;
         }
         
         $order = new Order((int)$id_order);
-        if (!Validate::isLoadedObject($order)) {
+        $old_os = $order->getCurrentOrderState();
+        if (!Validate::isLoadedObject($order) || ($old_os->id != $status->id && $old_os->paid)) {
             return false;
         }
         
@@ -244,8 +245,9 @@ class Dropday extends Module
         curl_setopt($ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
         curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_PORT, 443);
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($order_data));
-        if (!Configuration::get('PS_SSL_ENABLED')) {
+        if (!Configuration::get('PS_SSL_ENABLED') || 1) {
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
             curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
         }
@@ -269,7 +271,7 @@ class Dropday extends Module
     private function getProductLinkRewrite($id_product, $id_lang)
     {
         $lr = '';
-        $product_langs = ProductCore::getUrlRewriteInformations($id_product);
+        $product_langs = Product::getUrlRewriteInformations($id_product);
         foreach ($product_langs as $value) {
             $lr = $value['link_rewrite'];
             if ($value['id_lang'] == $id_lang) {
