@@ -201,8 +201,8 @@ class Dropday extends Module
             'shipping_cost' => Cart::getTotalCart($order->id_cart, true, Cart::ONLY_SHIPPING),
             'email' => $customer->email,
             'shipping_address' => array(
-                'firstname' => $address->firstname,
-                'lastname' => $address->lastname,
+                'first_name' => $address->firstname,
+                'last_name' => $address->lastname,
                 'company_name' => $address->company,
                 'address1' => $address->address1,
                 'address2' => ($address->address2 ? $address->address2 : $address->address2),
