@@ -1,0 +1,6 @@
+1.0.5
+
+- Add configuration explanation
+- Type cast total and shipping_cost as float
+- Add Accept to API call headers
+- Extend log for unknown errors

@@ -37,7 +37,7 @@ class Dropday extends Module
     {
         $this->name = 'dropday';
         $this->tab = 'administration';
-        $this->version = '1.0.4';
+        $this->version = '1.0.5';
         $this->author = 'Dropday support@dropday.nl';
         $this->need_instance = 0;
 
@@ -195,10 +195,10 @@ class Dropday extends Module
         $customer = new Customer((int)$order->id_customer);
         $address = new Address((int)$order->id_address_delivery);
         $order_data = array(
-            'external_id' => (int)$id_order,
+            'external_id' => (int) $id_order,
             'source' => $shop->name,
-            'total' => $order->getOrdersTotalPaid(),
-            'shipping_cost' => Cart::getTotalCart($order->id_cart, true, Cart::ONLY_SHIPPING),
+            'total' => (float) $order->getOrdersTotalPaid(),
+            'shipping_cost' => (float) Cart::getTotalCart($order->id_cart, true, Cart::ONLY_SHIPPING),
             'email' => $customer->email,
             'shipping_address' => array(
                 'first_name' => $address->firstname,
@@ -253,6 +253,7 @@ class Dropday extends Module
 
         $headers = array(
             'Content-Type: application/json',
+            'Accept: application/json',
             'Api-Key: '.Configuration::get('DROPDAY_ACCOUNT_APIKEY'),
             'Account-Id: '.Configuration::get('DROPDAY_ACCOUNT_ID')
         );
@@ -268,7 +269,7 @@ class Dropday extends Module
             } elseif ($httpcode == 422) {
                 Logger::addLog('[dropday] Error: ' . json_encode($result['errors']), 3, null, 'Order', (int)$id_order, true);
             } else {
-                Logger::addLog('[dropday] Unknown error', 3, $httpcode, 'Order', $id_order, true);
+                Logger::addLog('[dropday] Unknown error: ' . json_encode($result), 3, $httpcode, 'Order', $id_order, true);
             }
             error_log(json_encode($result));
         }
