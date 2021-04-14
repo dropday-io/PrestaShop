@@ -23,12 +23,8 @@
 *  @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
 *  International Registered Trademark & Property of PrestaShop SA
 */
-$sql = array();
 
-$sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'dropday` (
-    `id_dropday` int(11) NOT NULL AUTO_INCREMENT,
-    PRIMARY KEY  (`id_dropday`)
-) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
+$sql = array();
 
 foreach ($sql as $query) {
     if (Db::getInstance()->execute($query) == false) {
