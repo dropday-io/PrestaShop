@@ -17,49 +17,27 @@
 * versions in the future. If you wish to customize PrestaShop for your
 * needs please refer to http://www.prestashop.com for more information.
 *
-*  @author    PrestaShop SA <contact@prestashop.com>
-*  @copyright 2007-2021 PrestaShop SA
-*  @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
-*  International Registered Trademark & Property of PrestaShop SA
+* @author PrestaShop SA <contact@prestashop.com>
+* @copyright 2007-2021 PrestaShop SA
+* @license http://opensource.org/licenses/afl-3.0.php Academic Free License (AFL 3.0)
+* International Registered Trademark & Property of PrestaShop SA
 *}
 
 <div class="panel">
-	<div class="row moduleconfig-header">
-		<div class="col-xs-5 text-right">
-			<img src="{$module_dir|escape:'html':'UTF-8'}views/img/logo.jpg" />
-		</div>
-		<div class="col-xs-7 text-left">
-			<h2>{l s='Lorem' mod='dropday'}</h2>
-			<h4>{l s='Lorem ipsum dolor' mod='dropday'}</h4>
-		</div>
+	<div class="panel-heading">
+		Getting started
 	</div>
-
-	<hr />
-
-	<div class="moduleconfig-content">
-		<div class="row">
-			<div class="col-xs-12">
-				<p>
-					<h4>{l s='Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor' mod='dropday'}</h4>
-					<ul class="ul-spaced">
-						<li><strong>{l s='Lorem ipsum dolor sit amet' mod='dropday'}</strong></li>
-						<li>{l s='Lorem ipsum dolor sit amet' mod='dropday'}</li>
-						<li>{l s='Lorem ipsum dolor sit amet' mod='dropday'}</li>
-						<li>{l s='Lorem ipsum dolor sit amet' mod='dropday'}</li>
-						<li>{l s='Lorem ipsum dolor sit amet' mod='dropday'}</li>
-					</ul>
-				</p>
-
-				<br />
-
-				<p class="text-center">
-					<strong>
-						<a href="http://www.prestashop.com" target="_blank" title="Lorem ipsum dolor">
-							{l s='Lorem ipsum dolor' mod='dropday' }
-						</a>
-					</strong>
-				</p>
-			</div>
-		</div>
-	</div>
+    <div class="row">
+        <div class="col-xs-12">
+            <p><strong>{l s='How to get started with this module' mod='dropday'}</strong></p>
+            <ul>
+                <li>{l s='Go to' mod='dropday'} <a href="https://dropday.io/register">Dropday.io/register</a> {l s='and create a free Dropday account;' mod='dropday'}</li>
+                <li>{l s='Fill in your project name and generate an API-key;' mod='dropday'}</li>
+                <li>{l s='Copy your API-key and Account-ID and paste it in this module;' mod='dropday'}</li>
+                <li>{l s='Create Suppliers and Rules in your Dropday account;' mod='dropday'}</li>
+                <li>{l s='Start receiving orders, Dropday will forward it to the right supplier!' mod='dropday'}</li>
+            </ul>
+            <p>{l s='Contact' mod='dropday'} <a href="mailto:support@dropday.nl">support@dropday.nl</a> {l s='if you have any questions about Dropday or comments about this module.' mod='dropday'}</p>
+        </div>
+    </div>
 </div>

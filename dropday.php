@@ -107,7 +107,9 @@ class Dropday extends Module
             'id_language' => $this->context->language->id,
         );
 
-        return $helper->generateForm(array($this->getConfigForm()));
+        $output = $this->context->smarty->fetch($this->local_path.'views/templates/admin/configure.tpl');
+        
+        return $helper->generateForm(array($this->getConfigForm())).$output;
     }
 
     protected function getConfigForm()
