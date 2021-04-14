@@ -35,7 +35,7 @@ class Dropday extends Module
     public function __construct()
     {
         $this->name = 'dropday';
-        $this->tab = 'administration';
+        $this->tab = 'shipping_logistics';
         $this->version = '1.0.5';
         $this->author = 'Dropday support@dropday.nl';
         $this->need_instance = 0;
