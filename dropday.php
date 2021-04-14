@@ -30,7 +30,6 @@ if (!defined('_PS_VERSION_')) {
 
 class Dropday extends Module
 {
-    protected $image_format = 'large_default';
     protected $api_uri = 'https://dropday.io/api/v1/';
 
     public function __construct()
@@ -183,7 +182,7 @@ class Dropday extends Module
     
     public function handleOrder($id_order, OrderState $status)
     {
-        if (!$id_order || !Validate::isLoadedObject($status) || !$status->paid ) {
+        if (!$id_order || !Validate::isLoadedObject($status) || !$status->paid) {
             return false;
         }
         
