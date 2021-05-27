@@ -189,6 +189,10 @@ class Dropday extends Module
             return false;
         }
         
+        $cart = new Cart((int)$order->id_cart);
+        
+        $shipping_cost = $cart->getTotalShippingCost(null, true, null);
+        
         $shop = new Shop((int) $order->id_shop);
         $customer = new Customer((int) $order->id_customer);
         $address = new Address((int) $order->id_address_delivery);
@@ -196,7 +200,7 @@ class Dropday extends Module
             'external_id' => (int) $id_order,
             'source' => $shop->name,
             'total' => (float) $order->getOrdersTotalPaid(),
-            'shipping_cost' => (float) Cart::getTotalCart((int) $order->id_cart, true, Cart::ONLY_SHIPPING),
+            'shipping_cost' => (float) $shipping_cost,
             'email' => $customer->email,
             'shipping_address' => array(
                 'first_name' => $address->firstname,
