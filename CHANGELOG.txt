@@ -1,6 +1,17 @@
 1.0.6
 
+- remove unneeded description
+- fix format price
 - fix BC for version 1.6
+ - change code style for validation and readability
+      - following PSR standard
+      - write more readable code (not too much things on one line, ternaries, readable variables names)
+      - indenting
+ - change category
+ - solve validation errors
+ - remove unused sql
+- fix ImageType BC for version 1.6
+
 - change code style for validation and readability
 - following PSR standard
 - write more readable code (not too much things on one line, ternaries, readable variables names)
