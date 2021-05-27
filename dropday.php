@@ -196,7 +196,7 @@ class Dropday extends Module
             'external_id' => (int) $id_order,
             'source' => $shop->name,
             'total' => (float) $order->getOrdersTotalPaid(),
-            'shipping_cost' => (float) Cart::getTotalCart($order->id_cart, true, Cart::ONLY_SHIPPING),
+            'shipping_cost' => (float) Cart::getTotalCart((int) $order->id_cart, true, Cart::ONLY_SHIPPING),
             'email' => $customer->email,
             'shipping_address' => array(
                 'first_name' => $address->firstname,
@@ -221,7 +221,7 @@ class Dropday extends Module
                 ? $product['customizationQuantityTotal']
                 : $product['product_quantity'];
             $link_rewrite = $this->getProductLinkRewrite((int) $product['product_id'], (int) $order->id_lang);
-            $image_url = $this->context->link->getImageLink($link_rewrite, $product['image']->id, ImageType::getFormattedName('large'));
+            $image_url = $this->context->link->getImageLink($link_rewrite, $product['image']->id, $this->imageTypeGetFormattedName('large'));
             $product_data = array(
                 'external_id' => (int) $product['product_id'],
                 'name' => ''.$product['product_name'],
@@ -300,5 +300,20 @@ class Dropday extends Module
     public function hookActionValidateOrder($params)
     {
         return $this->handleOrder((int) $params['order']->id, $params['orderStatus']);
+    }
+
+    /**
+     * Fixes backward compatibility issue
+     *
+     * @param string $size
+     * @return mixed
+     */
+    private function imageTypeGetFormattedName($size = 'large')
+    {
+        if (method_exists('ImageType', 'getFormatedName')) {
+            return ImageType::getFormatedName($size);
+        }
+
+        return ImageType::getFormattedName('large');
     }
 }
