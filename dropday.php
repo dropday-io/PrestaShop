@@ -42,7 +42,7 @@ class Dropday extends Module
     {
         $this->name = 'dropday';
         $this->tab = 'shipping_logistics';
-        $this->version = '1.0.6';
+        $this->version = '1.0.7';
         $this->author = 'Dropday support@dropday.nl';
         $this->need_instance = 0;
 
@@ -231,7 +231,7 @@ class Dropday extends Module
         $customer = new Customer((int) $order->id_customer);
         $address = new Address((int) $order->id_address_delivery);
         $order_data = array(
-            'external_id' => (int) $id_order,
+            'external_id' => $order->reference,
             'source' => $shop->name,
             'total' => (float) $order->getOrdersTotalPaid(),
             'shipping_cost' => (float) $shipping_cost,
