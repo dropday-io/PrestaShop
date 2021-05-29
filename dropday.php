@@ -30,8 +30,14 @@ if (!defined('_PS_VERSION_')) {
 
 class Dropday extends Module
 {
+    /**
+     * @var string 
+     */
     protected $api_uri = 'https://dropday.io/api/v1/';
 
+    /**
+     * Dropday constructor.
+     */
     public function __construct()
     {
         $this->name = 'dropday';
@@ -50,6 +56,9 @@ class Dropday extends Module
         $this->ps_versions_compliancy = array('min' => '1.6', 'max' => _PS_VERSION_);
     }
 
+    /**
+     * @return bool
+     */
     public function install()
     {
         Configuration::updateValue('DROPDAY_LIVE_MODE', false);
@@ -61,11 +70,17 @@ class Dropday extends Module
             $this->registerHook('actionValidateOrder');
     }
 
+    /**
+     * @return mixed
+     */
     public function uninstall()
     {
         return parent::uninstall();
     }
 
+    /**
+     * @return string
+     */
     public function getContent()
     {
         $output = '';
@@ -75,12 +90,19 @@ class Dropday extends Module
         $output .= $this->renderForm();
         return $output;
     }
-    
+
+    /**
+     * @param string $type
+     * @return string
+     */
     public function getApiUrl($type = '')
     {
         return $type ? trim($this->api_uri, '/') . '/' . $type : trim($this->api_uri, '/');
     }
 
+    /**
+     * @return string
+     */
     protected function renderForm()
     {
         $helper = new HelperForm();
@@ -108,6 +130,9 @@ class Dropday extends Module
         return $helper->generateForm(array($this->getConfigForm())).$output;
     }
 
+    /**
+     * @return array[]
+     */
     protected function getConfigForm()
     {
         return array(
@@ -157,6 +182,9 @@ class Dropday extends Module
         );
     }
 
+    /**
+     * @return array
+     */
     protected function getConfigFormValues()
     {
         return array(
@@ -165,7 +193,10 @@ class Dropday extends Module
             'DROPDAY_ACCOUNT_APIKEY' => Configuration::get('DROPDAY_ACCOUNT_APIKEY', null),
         );
     }
-    
+
+    /**
+     * @return mixed
+     */
     protected function postProcess()
     {
         $form_values = $this->getConfigFormValues();
@@ -174,7 +205,12 @@ class Dropday extends Module
         }
         return $this->displayConfirmation($this->l('Settings updated successfully!'));
     }
-    
+
+    /**
+     * @param $id_order
+     * @param OrderState $status
+     * @return false
+     */
     public function handleOrder($id_order, OrderState $status)
     {
         if (!$id_order || !Validate::isLoadedObject($status) || !$status->paid) {
@@ -280,7 +316,12 @@ class Dropday extends Module
         }
         curl_close($ch);
     }
-    
+
+    /**
+     * @param $id_product
+     * @param $id_lang
+     * @return mixed|string
+     */
     private function getProductLinkRewrite($id_product, $id_lang)
     {
         $lr = '';
@@ -294,11 +335,19 @@ class Dropday extends Module
         return $lr;
     }
 
+    /**
+     * @param $params
+     * @return false
+     */
     public function hookActionOrderStatusUpdate($params)
     {
         return $this->handleOrder((int) $params['id_order'], $params['newOrderStatus']);
     }
 
+    /**
+     * @param $params
+     * @return false
+     */
     public function hookActionValidateOrder($params)
     {
         return $this->handleOrder((int) $params['order']->id, $params['orderStatus']);
