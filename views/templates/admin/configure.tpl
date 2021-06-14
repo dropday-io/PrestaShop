@@ -29,15 +29,16 @@
 	</div>
     <div class="row">
         <div class="col-xs-12">
+            <p>{l s='Module installation' mod='dropday'}: <a href="{$module_dir}docs/readme_en.html" target="_blank">documentation.</a></p>
             <p><strong>{l s='How to get started with this module' mod='dropday'}</strong></p>
             <ul>
-                <li>{l s='Go to' mod='dropday'} <a href="https://dropday.io/register">Dropday.io/register</a> {l s='and create a free Dropday account;' mod='dropday'}</li>
+                <li>{l s='Get your Dropday.io API key from the your account.' mod='dropday'}
                 <li>{l s='Fill in your project name and generate an API-key;' mod='dropday'}</li>
                 <li>{l s='Copy your API-key and Account-ID and paste it in this module;' mod='dropday'}</li>
-                <li>{l s='Create Suppliers and Rules in your Dropday account;' mod='dropday'}</li>
-                <li>{l s='Start receiving orders, Dropday will forward it to the right supplier!' mod='dropday'}</li>
+                <li>{l s='Create Suppliers and Rules in your Dropday.io account;' mod='dropday'}</li>
+                <li>{l s='Start receiving orders, Dropday.io will forward it to the right supplier!' mod='dropday'}</li>
             </ul>
-            <p>{l s='Contact' mod='dropday'} <a href="mailto:support@dropday.nl">support@dropday.nl</a> {l s='if you have any questions about Dropday or comments about this module.' mod='dropday'}</p>
+            <p>{l s='For support, contact PrestaShop Marketplace for help with integrating Dropday.io' mod='dropday'}
         </div>
     </div>
 </div>
