@@ -1,3 +1,7 @@
+1.0.8
+
+- improve explanation in config page
+
 1.0.7
 
 - change order id to order reference
