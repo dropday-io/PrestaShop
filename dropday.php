@@ -307,7 +307,7 @@ class Dropday extends Module
             $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             $result = json_decode($result, true);
             if ($httpcode == 200) {
-                Logger::addLog('[dropday] Order created :#'.$result['order_id'], 1, null, 'Order', (int) $id_order, true);
+                Logger::addLog('[dropday] API request sent successfully :#'.$result['reference'], 1, null, 'API reference no', (int) $result['reference'], true);
             } elseif ($httpcode == 422) {
                 Logger::addLog('[dropday] Error: ' . json_encode($result['errors']), 3, null, 'Order', (int) $id_order, true);
             } else {
