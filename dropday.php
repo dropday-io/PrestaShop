@@ -42,7 +42,7 @@ class Dropday extends Module
     {
         $this->name = 'dropday';
         $this->tab = 'shipping_logistics';
-        $this->version = '1.0.8';
+        $this->version = '1.1.0';
         $this->author = 'Dropday support@dropday.nl';
         $this->need_instance = 0;
         $this->module_key = '11652b14d72adae8e5c3d8129167bde7';
@@ -277,6 +277,24 @@ class Dropday extends Module
             if (Tools::strlen($product['ean13']) >= 13) {
                 $product_data['ean13'] = $product['ean13'];
             }
+
+            $productCustomizations = $cart->getProductCustomization((int)$product['id_product']);
+
+            if (is_array($productCustomizations) && !empty($productCustomizations)) {
+                $custom = [];
+                foreach ($productCustomizations as $productCustomization) {
+                    $productCustomizationName = $this->getProductCustomizationFieldName($productCustomization);
+                    $productCustomizationValue = $this->getProductCustomizationFieldValue($productCustomization);
+                    if (($productCustomizationName === false) || ($productCustomizationValue === false)) {
+                        continue;
+                    }
+                    // otherwise
+                    $custom[$productCustomizationName] = $productCustomizationValue;
+                }
+                if (!empty($custom)) {
+                    $product_data['custom'] = $custom;
+                }
+            }
             
             $order_data['products'][] = $product_data;
         }
@@ -388,5 +406,49 @@ class Dropday extends Module
         }
         
         return $reference;
+    }
+
+    /**
+     * Makes customization field name
+     * 
+     * @param $productCustomization
+     * @return false|string
+     */
+    private function getProductCustomizationFieldName($productCustomization)
+    {
+        $sql = sprintf('SELECT `name` FROM `%scustomization_field_lang` WHERE `id_customization_field`=%s AND `id_lang`=%s AND `id_shop`=%s',
+            _DB_PREFIX_,
+            (int)$productCustomization['index'], 
+            $this->context->language->id, 
+            $this->context->shop->id
+        );
+        
+        return DB::getInstance()->getValue($sql) ?: false;
+    }
+
+    /**
+     * Makes customization field value
+     * 
+     * @param $productCustomization
+     * @return false|string
+     */
+    private function getProductCustomizationFieldValue($productCustomization)
+    {
+        // compare as (strings) to avoid complications with '0'
+        switch ((string)$productCustomization['type']) {
+            case (string)Product::CUSTOMIZE_TEXTFIELD:
+                $return = $productCustomization['value'];
+                break;
+            case (string)Product::CUSTOMIZE_FILE:
+                $return = sprintf("%s/upload/%s",
+                    rtrim($this->context->link->getPageLink('index'), '/'),
+                    $productCustomization['value']
+                );
+                break;
+            default:
+                $return = false;
+        }
+        
+        return $return;
     }
 }
