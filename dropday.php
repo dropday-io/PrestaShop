@@ -261,10 +261,11 @@ class Dropday extends Module
                 : $product['product_quantity'];
             $link_rewrite = $this->getProductLinkRewrite((int) $product['product_id'], (int) $order->id_lang);
             $image_url = $this->context->link->getImageLink($link_rewrite, $product['image']->id, $this->imageTypeGetFormattedName('large'));
+            
             $product_data = array(
                 'external_id' => (int) $product['product_id'],
                 'name' => ''.$product['product_name'],
-                'reference' => ''.$product['reference'],
+                'reference' => ''.$this->getProductReference($product),
                 'quantity' => $quantity,
                 'price' => (float) $product['product_price'],
                 'image_url' => $image_url,
@@ -367,5 +368,25 @@ class Dropday extends Module
         }
 
         return ImageType::getFormattedName('large');
+    }
+
+    /**
+     * Checks for combination and gets correct product reference
+     * 
+     * @param array $product
+     * @return string
+     */
+    private function getProductReference($product)
+    {
+        $reference = $product['reference'];
+
+        if ((int)$product['product_attribute_id'] > 0) {
+            $combination = new Combination((int)$product['product_attribute_id']);
+            if ((string)$combination->reference !== '') {
+                $reference = $combination->reference;
+            }
+        }
+        
+        return $reference;
     }
 }
