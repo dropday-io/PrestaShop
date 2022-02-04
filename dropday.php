@@ -266,27 +266,21 @@ class Dropday extends Module
                 ? $this->context->link->getImageLink($link_rewrite, $product['image']->id, $this->imageTypeGetFormattedName('large'))
                 : null;
 
-            $productCustomizations = $cart->getProductCustomization((int)$product['id_product']);
-
-            if (is_array($productCustomizations) && !empty($productCustomizations)) {
+            if ($productCustomizations = $cart->getProductCustomization($product['id_product'])) {
                 $custom = [];
 
                 $count = 1;
                 foreach ($productCustomizations as $key => $productCustomization) {
-                    if ($productCustomization['id_customization'] !== $product['id_customization']) {
-                        continue;
-                    }
-
                     $productCustomizationName = $this->getProductCustomizationFieldName($productCustomization);
 
                     $productCustomizationValue = $this->getProductCustomizationFieldValue($productCustomization);
-                    
+
                     if ($productCustomizationValue === false) {
                         continue;
                     }
 
                     if (!$productCustomizationName) {
-                        $productCustomizationName = 'value_' . (string) ($count);
+                        $productCustomizationName = 'value_' . (string) $count;
                     }
 
                     $custom[$productCustomization['id_customization']][$productCustomizationName] = $productCustomizationValue;
@@ -294,7 +288,7 @@ class Dropday extends Module
                     $count++;
                 }
 
-                foreach ($custom as $customization) {
+                foreach ($custom as $id_customization => $customization) {
                     $product_data = array(
                         'external_id' => (int) $product['product_id'],
                         'name' => ''.$product['product_name'],
@@ -308,7 +302,7 @@ class Dropday extends Module
                         'custom' => $customization
                     );
 
-                    $order_data['products'][$product['id_product'].$product['id_customization']] = $product_data;
+                    $order_data['products'][$product['id_product'] . $id_customization] = $product_data;
                 }
             } else {
                 $product_data = array(
