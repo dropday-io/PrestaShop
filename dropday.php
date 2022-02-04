@@ -217,9 +217,10 @@ class Dropday extends Module
         if (!$id_order || !Validate::isLoadedObject($status) || !$status->paid) {
             return false;
         }
-        
+
         $order = new Order((int) $id_order);
         $old_os = $order->getCurrentOrderState();
+
         if (!Validate::isLoadedObject($order)) {
             return false;
         }
@@ -227,7 +228,6 @@ class Dropday extends Module
         $cart = new Cart((int)$order->id_cart);
         
         $shipping_cost = $cart->getTotalShippingCost(null, true, null);
-        
         $shop = new Shop((int) $order->id_shop);
         $customer = new Customer((int) $order->id_customer);
         $address = new Address((int) $order->id_address_delivery);
@@ -254,51 +254,83 @@ class Dropday extends Module
             $order_data['test'] = true;
         }
         $products = $order->getProducts();
+
         foreach ($products as $product) {
+
             $cat = new Category((int) $product['id_category_default'], (int) $order->id_lang);
             $quantity = (int) (isset($product['customizationQuantityTotal']) && $product['customizationQuantityTotal'])
                 ? $product['customizationQuantityTotal']
                 : $product['product_quantity'];
             $link_rewrite = $this->getProductLinkRewrite((int) $product['product_id'], (int) $order->id_lang);
-            $image_url = $this->context->link->getImageLink($link_rewrite, $product['image']->id, $this->imageTypeGetFormattedName('large'));
-            
-            $product_data = array(
-                'external_id' => (int) $product['product_id'],
-                'name' => ''.$product['product_name'],
-                'reference' => ''.$this->getProductReference($product),
-                'quantity' => $quantity,
-                'price' => (float) $product['product_price'],
-                'image_url' => $image_url,
-                'brand' => ''.Manufacturer::getNameById((int) $product['id_manufacturer']),
-                'category' => ''.$cat->name,
-                'supplier' => ''.Supplier::getNameById((int) $product['id_supplier']),
-            );
-            
-            if (Tools::strlen($product['ean13']) >= 13) {
-                $product_data['ean13'] = $product['ean13'];
-            }
+            $image_url = isset($product['image'])
+                ? $this->context->link->getImageLink($link_rewrite, $product['image']->id, $this->imageTypeGetFormattedName('large'))
+                : null;
 
             $productCustomizations = $cart->getProductCustomization((int)$product['id_product']);
 
             if (is_array($productCustomizations) && !empty($productCustomizations)) {
                 $custom = [];
-                foreach ($productCustomizations as $productCustomization) {
-                    $productCustomizationName = $this->getProductCustomizationFieldName($productCustomization);
-                    $productCustomizationValue = $this->getProductCustomizationFieldValue($productCustomization);
-                    if (($productCustomizationName === false) || ($productCustomizationValue === false)) {
+
+                $count = 1;
+                foreach ($productCustomizations as $key => $productCustomization) {
+                    if ($productCustomization['id_customization'] !== $product['id_customization']) {
                         continue;
                     }
-                    // otherwise
-                    $custom[$productCustomizationName] = $productCustomizationValue;
+
+                    $productCustomizationName = $this->getProductCustomizationFieldName($productCustomization);
+
+                    $productCustomizationValue = $this->getProductCustomizationFieldValue($productCustomization);
+                    
+                    if ($productCustomizationValue === false) {
+                        continue;
+                    }
+
+                    if (!$productCustomizationName) {
+                        $productCustomizationName = 'value_' . (string) ($count);
+                    }
+
+                    $custom[$productCustomization['id_customization']][$productCustomizationName] = $productCustomizationValue;
+
+                    $count++;
                 }
-                if (!empty($custom)) {
-                    $product_data['custom'] = $custom;
+
+                foreach ($custom as $customization) {
+                    $product_data = array(
+                        'external_id' => (int) $product['product_id'],
+                        'name' => ''.$product['product_name'],
+                        'reference' => ''.$this->getProductReference($product),
+                        'quantity' => (int) $productCustomization['quantity'],
+                        'price' => (float) $product['product_price'],
+                        'image_url' => $image_url,
+                        'brand' => ''.Manufacturer::getNameById((int) $product['id_manufacturer']),
+                        'category' => ''.$cat->name,
+                        'supplier' => ''.Supplier::getNameById((int) $product['id_supplier']),
+                        'custom' => $customization
+                    );
+
+                    $order_data['products'][$product['id_product'].$product['id_customization']] = $product_data;
                 }
+            } else {
+                $product_data = array(
+                    'external_id' => (int) $product['product_id'],
+                    'name' => ''.$product['product_name'],
+                    'reference' => ''.$this->getProductReference($product),
+                    'quantity' => $quantity,
+                    'price' => (float) $product['product_price'],
+                    'image_url' => $image_url,
+                    'brand' => ''.Manufacturer::getNameById((int) $product['id_manufacturer']),
+                    'category' => ''.$cat->name,
+                    'supplier' => ''.Supplier::getNameById((int) $product['id_supplier']),
+                );
+
+                $order_data['products'][$product['id_product']] = $product_data;
             }
-            
-            $order_data['products'][] = $product_data;
+                        
+            if (Tools::strlen($product['ean13']) >= 13) {
+                $product_data['ean13'] = $product['ean13'];
+            }
         }
-        
+
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $this->getApiUrl('orders'));
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
@@ -418,7 +450,7 @@ class Dropday extends Module
     {
         $sql = sprintf('SELECT `name` FROM `%scustomization_field_lang` WHERE `id_customization_field`=%s AND `id_lang`=%s AND `id_shop`=%s',
             _DB_PREFIX_,
-            (int)$productCustomization['index'], 
+            (int) $productCustomization['index'], 
             $this->context->language->id, 
             $this->context->shop->id
         );
