@@ -1,3 +1,7 @@
+1.1.2
+
+- feat: Add stock quantity if stock management is enabled
+
 1.1.1
 
 - fix: Assign smarty variable to avoid notice in backoffice
