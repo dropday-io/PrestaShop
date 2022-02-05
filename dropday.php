@@ -42,7 +42,7 @@ class Dropday extends Module
     {
         $this->name = 'dropday';
         $this->tab = 'shipping_logistics';
-        $this->version = '1.1.1';
+        $this->version = '1.1.2';
         $this->author = 'Dropday support@dropday.nl';
         $this->need_instance = 0;
         $this->module_key = '11652b14d72adae8e5c3d8129167bde7';
@@ -277,6 +277,11 @@ class Dropday extends Module
                 'category' => ''.$cat->name,
                 'supplier' => ''.Supplier::getNameById((int) $product['id_supplier']),
             );
+
+            if (Configuration::get('PS_STOCK_MANAGEMENT')) {
+                $stockAvailable = StockAvailable::getQuantityAvailableByProduct($product['id_product'], $product['id_product_attribute'], $this->context->shop->id);
+                $product_data['stock_quantity'] = (int) $stockAvailable + (int) $quantity;
+            }
             
             if (Tools::strlen($product['ean13']) >= 13) {
                 $product_data['ean13'] = $product['ean13'];
