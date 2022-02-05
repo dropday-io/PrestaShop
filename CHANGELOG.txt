@@ -1,3 +1,12 @@
+1.2.0
+
+- add separate customizations
+- add quantity of customization
+- fix: add image if object exists
+- fix: add customization key placeholder if customization key name is not available
+- style: several PSR-2 corrections
+
+
 1.1.2
 
 - feat: Add stock quantity if stock management is enabled
