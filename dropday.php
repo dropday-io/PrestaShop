@@ -42,7 +42,7 @@ class Dropday extends Module
     {
         $this->name = 'dropday';
         $this->tab = 'shipping_logistics';
-        $this->version = '1.1.1';
+        $this->version = '1.1.2';
         $this->author = 'Dropday support@dropday.nl';
         $this->need_instance = 0;
         $this->module_key = '11652b14d72adae8e5c3d8129167bde7';
@@ -266,6 +266,7 @@ class Dropday extends Module
                 ? $product['customizationQuantityTotal']
                 : $product['product_quantity'];
             $link_rewrite = $this->getProductLinkRewrite((int) $product['product_id'], (int) $order->id_lang);
+
             $image_url = isset($product['image'])
                 ? $this->context->link->getImageLink($link_rewrite, $product['image']->id, $this->imageTypeGetFormattedName('large'))
                 : null;
