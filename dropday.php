@@ -271,8 +271,6 @@ class Dropday extends Module
         }
 
         curl_close($ch);
-
-        return [$order_date, $result];
     }
 
     public function getOrderData(Order $order)
@@ -404,20 +402,18 @@ class Dropday extends Module
 
     /**
      * @param $params
-     * @return false
      */
     public function hookActionOrderStatusUpdate($params)
     {
-        return $this->handleOrder((int) $params['id_order'], $params['newOrderStatus']);
+        $this->handleOrder((int) $params['id_order'], $params['newOrderStatus']);
     }
 
     /**
      * @param $params
-     * @return false
      */
     public function hookActionValidateOrder($params)
     {
-        return $this->handleOrder((int) $params['order']->id, $params['orderStatus']);
+        $this->handleOrder((int) $params['order']->id, $params['orderStatus']);
     }
 
     /**
