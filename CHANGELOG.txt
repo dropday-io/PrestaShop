@@ -1,3 +1,7 @@
+1.2.1
+
+- feat: Make abstraction for retrieving order data, to make it overridable
+
 1.2.0
 
 - add separate customizations
