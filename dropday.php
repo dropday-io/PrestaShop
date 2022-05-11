@@ -261,6 +261,17 @@ class Dropday extends Module
 
         foreach ($products as $product) {
 
+            $stockQuantity = false;
+            if (Configuration::get('PS_STOCK_MANAGEMENT')) {
+                $stockAvailable = StockAvailable::getQuantityAvailableByProduct($product['product_id'], $product['product_attribute_id'], $this->context->shop->id);
+                $stockQuantity = (int) $stockAvailable + (int) $quantity;
+            }
+
+            $ean13 = false;
+            if (Tools::strlen($product['product_ean13']) >= 13) {
+                $ean13 = $product['product_ean13'];
+            }
+
             $cat = new Category((int) $product['id_category_default'], (int) $order->id_lang);
             $quantity = (int) (isset($product['customizationQuantityTotal']) && $product['customizationQuantityTotal'])
                 ? $product['customizationQuantityTotal']
@@ -271,7 +282,7 @@ class Dropday extends Module
                 ? $this->context->link->getImageLink($link_rewrite, $product['image']->id, $this->imageTypeGetFormattedName('large'))
                 : null;
 
-            if ($productCustomizations = $cart->getProductCustomization($product['id_product'])) {
+            if ($productCustomizations = $cart->getProductCustomization($product['product_id'])) {
                 $custom = [];
 
                 $count = 1;
@@ -307,7 +318,15 @@ class Dropday extends Module
                         'custom' => $customization
                     );
 
-                    $order_data['products'][$product['id_product'] . $id_customization] = $product_data;
+                    if ($stockQuantity !== false) {
+                        $product_data['stock_quantity'] = $stockQuantity;
+                    }
+
+                    if ($ean13 !== false) {
+                        $product_data['ean13'] = $ean13;
+                    }
+
+                    $order_data['products'][$product['id_order_detail'] . '_' . $id_customization] = $product_data;
                 }
             } else {
                 $product_data = array(
@@ -322,11 +341,15 @@ class Dropday extends Module
                     'supplier' => ''.Supplier::getNameById((int) $product['id_supplier']),
                 );
 
-                $order_data['products'][$product['id_product']] = $product_data;
-            }
-                        
-            if (Tools::strlen($product['ean13']) >= 13) {
-                $product_data['ean13'] = $product['ean13'];
+                if ($stockQuantity !== false) {
+                    $product_data['stock_quantity'] = $stockQuantity;
+                }
+
+                if ($ean13 !== false) {
+                    $product_data['ean13'] = $ean13;
+                }
+
+                $order_data['products'][$product['id_order_detail']] = $product_data;
             }
         }
 
