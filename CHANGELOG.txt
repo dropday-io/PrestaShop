@@ -1,3 +1,10 @@
+1.2.1
+
+- fix: Combinations of the same product are not all passed to the Order API bug
+- fix: EAN13 is not passed in order API bug
+- fix: Stock quantity not correctly inserted into order API bug
+- fix: Stock quantity is missing in order API call bug
+
 1.2.0
 
 - add separate customizations
