@@ -1,3 +1,9 @@
+1.2.2
+
+- fix: pass EAN13 of product and product attribute to API
+- fix: Move $quantity to avoid undefined variable
+
+
 1.2.1
 
 - fix: Combinations of the same product are not all passed to the Order API bug

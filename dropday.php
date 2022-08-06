@@ -42,7 +42,7 @@ class Dropday extends Module
     {
         $this->name = 'dropday';
         $this->tab = 'shipping_logistics';
-        $this->version = '1.2.1';
+        $this->version = '1.2.2';
         $this->author = 'Dropday support@dropday.nl';
         $this->need_instance = 0;
         $this->module_key = '11652b14d72adae8e5c3d8129167bde7';
@@ -260,22 +260,18 @@ class Dropday extends Module
         $products = $order->getProducts();
 
         foreach ($products as $product) {
-
             $stockQuantity = false;
+            
+            $quantity = (int) (isset($product['customizationQuantityTotal']) && $product['customizationQuantityTotal'])
+                ? $product['customizationQuantityTotal']
+                : $product['product_quantity'];
+
             if (Configuration::get('PS_STOCK_MANAGEMENT')) {
                 $stockAvailable = StockAvailable::getQuantityAvailableByProduct($product['product_id'], $product['product_attribute_id'], $this->context->shop->id);
                 $stockQuantity = (int) $stockAvailable + (int) $quantity;
             }
 
-            $ean13 = false;
-            if (Tools::strlen($product['product_ean13']) >= 13) {
-                $ean13 = $product['product_ean13'];
-            }
-
             $cat = new Category((int) $product['id_category_default'], (int) $order->id_lang);
-            $quantity = (int) (isset($product['customizationQuantityTotal']) && $product['customizationQuantityTotal'])
-                ? $product['customizationQuantityTotal']
-                : $product['product_quantity'];
             $link_rewrite = $this->getProductLinkRewrite((int) $product['product_id'], (int) $order->id_lang);
 
             $image_url = isset($product['image'])
@@ -322,7 +318,7 @@ class Dropday extends Module
                         $product_data['stock_quantity'] = $stockQuantity;
                     }
 
-                    if ($ean13 !== false) {
+                    if ($ean13 = $this->getProductEan13($product)) {
                         $product_data['ean13'] = $ean13;
                     }
 
@@ -333,6 +329,7 @@ class Dropday extends Module
                     'external_id' => (int) $product['product_id'],
                     'name' => ''.$product['product_name'],
                     'reference' => ''.$this->getProductReference($product),
+                    'ean13' => $this->getProductEan13($product),
                     'quantity' => $quantity,
                     'price' => (float) $product['product_price'],
                     'image_url' => $image_url,
@@ -345,7 +342,7 @@ class Dropday extends Module
                     $product_data['stock_quantity'] = $stockQuantity;
                 }
 
-                if ($ean13 !== false) {
+                if ($ean13 = $this->getProductEan13($product)) {
                     $product_data['ean13'] = $ean13;
                 }
 
@@ -460,6 +457,21 @@ class Dropday extends Module
         }
         
         return $reference;
+    }
+
+    /**
+     * Get the ean13 number of the cart's product 
+     * 
+     * @param array $product
+     * @return string
+     */
+    private function getProductEan13($product)
+    {
+        if (Validate::isEan13($product['product_ean13'])) {
+            return $product['product_ean13'];
+        }
+
+        return false;
     }
 
     /**
