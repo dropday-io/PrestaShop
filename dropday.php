@@ -271,11 +271,6 @@ class Dropday extends Module
                 $stockQuantity = (int) $stockAvailable + (int) $quantity;
             }
 
-            $ean13 = false;
-            if (Tools::strlen($product['product_ean13']) >= 13) {
-                $ean13 = $product['product_ean13'];
-            }
-
             $cat = new Category((int) $product['id_category_default'], (int) $order->id_lang);
             $link_rewrite = $this->getProductLinkRewrite((int) $product['product_id'], (int) $order->id_lang);
 
@@ -323,7 +318,7 @@ class Dropday extends Module
                         $product_data['stock_quantity'] = $stockQuantity;
                     }
 
-                    if ($ean13 !== false) {
+                    if ($ean13 = $this->getProductEan13($product)) {
                         $product_data['ean13'] = $ean13;
                     }
 
@@ -334,6 +329,7 @@ class Dropday extends Module
                     'external_id' => (int) $product['product_id'],
                     'name' => ''.$product['product_name'],
                     'reference' => ''.$this->getProductReference($product),
+                    'ean13' => $this->getProductEan13($product),
                     'quantity' => $quantity,
                     'price' => (float) $product['product_price'],
                     'image_url' => $image_url,
@@ -346,7 +342,7 @@ class Dropday extends Module
                     $product_data['stock_quantity'] = $stockQuantity;
                 }
 
-                if ($ean13 !== false) {
+                if ($ean13 = $this->getProductEan13($product)) {
                     $product_data['ean13'] = $ean13;
                 }
 
@@ -461,6 +457,21 @@ class Dropday extends Module
         }
         
         return $reference;
+    }
+
+    /**
+     * Get the ean13 number of the cart's product 
+     * 
+     * @param array $product
+     * @return string
+     */
+    private function getProductEan13($product)
+    {
+        if (Validate::isEan13($product['product_ean13'])) {
+            return $product['product_ean13'];
+        }
+
+        return false;
     }
 
     /**
