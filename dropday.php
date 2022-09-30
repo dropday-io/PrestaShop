@@ -260,11 +260,15 @@ class Dropday extends Module
         $products = $order->getProducts();
 
         foreach ($products as $product) {
+            
+            $quantity = (int) (isset($product['customizationQuantityTotal']) && $product['customizationQuantityTotal'])
+                ? $product['customizationQuantityTotal']
+                : $product['product_quantity'];
 
             $stockQuantity = false;
             if (Configuration::get('PS_STOCK_MANAGEMENT')) {
                 $stockAvailable = StockAvailable::getQuantityAvailableByProduct($product['product_id'], $product['product_attribute_id'], $this->context->shop->id);
-                $stockQuantity = (int) $stockAvailable + (int) $product['quantity'];
+                $stockQuantity = (int) $stockAvailable + (int) $quantity;
             }
 
             $ean13 = false;
@@ -273,9 +277,7 @@ class Dropday extends Module
             }
 
             $cat = new Category((int) $product['id_category_default'], (int) $order->id_lang);
-            $quantity = (int) (isset($product['customizationQuantityTotal']) && $product['customizationQuantityTotal'])
-                ? $product['customizationQuantityTotal']
-                : $product['product_quantity'];
+
             $link_rewrite = $this->getProductLinkRewrite((int) $product['product_id'], (int) $order->id_lang);
 
             $image_url = isset($product['image'])
