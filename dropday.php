@@ -307,14 +307,14 @@ class Dropday extends Module
                 foreach ($custom as $id_customization => $customization) {
                     $product_data = array(
                         'external_id' => (int) $product['product_id'],
-                        'name' => ''.$product['product_name'],
-                        'reference' => ''.$this->getProductReference($product),
+                        'name' => (string) $product['product_name'],
+                        'reference' => (string) $this->getProductReference($product),
                         'quantity' => (int) $productCustomization['quantity'],
                         'price' => (float) $product['product_price'],
                         'image_url' => $image_url,
-                        'brand' => ''.Manufacturer::getNameById((int) $product['id_manufacturer']),
-                        'category' => ''.$cat->name,
-                        'supplier' => ''.Supplier::getNameById((int) $product['id_supplier']),
+                        'brand' => (string) Manufacturer::getNameById((int) $product['id_manufacturer']),
+                        'category' => (string) $cat->name,
+                        'supplier' => (string) Supplier::getNameById((int) $product['id_supplier']),
                         'custom' => $customization
                     );
 
@@ -331,14 +331,14 @@ class Dropday extends Module
             } else {
                 $product_data = array(
                     'external_id' => (int) $product['product_id'],
-                    'name' => ''.$product['product_name'],
-                    'reference' => ''.$this->getProductReference($product),
+                    'name' => (string) $product['product_name'],
+                    'reference' => (string) $this->getProductReference($product),
                     'quantity' => $quantity,
                     'price' => (float) $product['product_price'],
                     'image_url' => $image_url,
-                    'brand' => ''.Manufacturer::getNameById((int) $product['id_manufacturer']),
-                    'category' => ''.$cat->name,
-                    'supplier' => ''.Supplier::getNameById((int) $product['id_supplier']),
+                    'brand' => (string) Manufacturer::getNameById((int) $product['id_manufacturer']),
+                    'category' => (string) $cat->name,
+                    'supplier' => (string) Supplier::getNameById((int) $product['id_supplier']),
                 );
 
                 if ($stockQuantity !== false) {
