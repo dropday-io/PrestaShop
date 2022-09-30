@@ -264,7 +264,7 @@ class Dropday extends Module
             $stockQuantity = false;
             if (Configuration::get('PS_STOCK_MANAGEMENT')) {
                 $stockAvailable = StockAvailable::getQuantityAvailableByProduct($product['product_id'], $product['product_attribute_id'], $this->context->shop->id);
-                $stockQuantity = (int) $stockAvailable + (int) $quantity;
+                $stockQuantity = (int) $stockAvailable + (int) $product['quantity'];
             }
 
             $ean13 = false;
