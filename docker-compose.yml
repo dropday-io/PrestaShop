@@ -29,6 +29,7 @@ services:
             PS_DOMAIN: localhost
             PS_FOLDER_INSTALL: install-dev
             PS_FOLDER_ADMIN: admin-dev
+            PS_DEV_MODE: true
         ports:
             - "80:80"
         volumes:
