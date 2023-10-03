@@ -65,7 +65,6 @@ class Dropday extends Module
         Configuration::updateValue('DROPDAY_LIVE_MODE', false);
 
         return parent::install() &&
-            $this->registerHook('header') &&
             $this->registerHook('backOfficeHeader') &&
             $this->registerHook('actionOrderStatusUpdate') &&
             $this->registerHook('actionValidateOrder');
