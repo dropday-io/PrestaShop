@@ -1,8 +1,8 @@
 version: '3'
 
 services:
-    mysql:
-        image: mysql:latest
+    mariadb:
+        image: mariadb:10.11
         ports:
             - "3306:3306"
         networks:
@@ -14,18 +14,16 @@ services:
             MYSQL_PASSWORD: password
             MYSQL_DATABASE: prestashop
     apache:
-        image: prestashop/prestashop:latest
+        image: 'prestashop/prestashop:${TAG}'
         networks:
             - prestashop
         depends_on:
-            - mysql
-        links:
-            - mysql
+            - mariadb
         environment:
             PS_INSTALL_AUTO: 1
             DB_PASSWD: password
             DB_NAME: prestashop
-            DB_SERVER: mysql
+            DB_SERVER: mariadb
             PS_DOMAIN: localhost
             PS_FOLDER_INSTALL: install-dev
             PS_FOLDER_ADMIN: admin-dev
