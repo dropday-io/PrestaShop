@@ -2,7 +2,7 @@ version: '3'
 
 services:
     mariadb:
-        image: mariadb:latest
+        image: mariadb:10.11
         ports:
             - "3306:3306"
         networks:
