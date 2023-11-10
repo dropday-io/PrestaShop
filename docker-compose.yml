@@ -19,8 +19,6 @@ services:
             - prestashop
         depends_on:
             - mariadb
-        links:
-            - mariadb
         environment:
             PS_INSTALL_AUTO: 1
             DB_PASSWD: password
