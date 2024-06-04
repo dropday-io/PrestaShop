@@ -65,8 +65,6 @@ class Dropday extends Module
         Configuration::updateValue('DROPDAY_LIVE_MODE', false);
 
         return parent::install() &&
-            $this->registerHook('header') &&
-            $this->registerHook('backOfficeHeader') &&
             $this->registerHook('actionOrderStatusUpdate') &&
             $this->registerHook('actionValidateOrder');
     }
@@ -273,7 +271,7 @@ class Dropday extends Module
             $stockQuantity = false;
             if (Configuration::get('PS_STOCK_MANAGEMENT')) {
                 $stockAvailable = StockAvailable::getQuantityAvailableByProduct($product['product_id'], $product['product_attribute_id'], $this->context->shop->id);
-                $stockQuantity = (int) $stockAvailable + (int) $quantity;
+                $stockQuantity = (int) $stockAvailable + (int) $product['product_quantity'];
             }
 
             $ean13 = false;
@@ -340,7 +338,7 @@ class Dropday extends Module
                     'external_id' => (int) $product['product_id'],
                     'name' => ''.$product['product_name'],
                     'reference' => ''.$this->getProductReference($product),
-                    'quantity' => $quantity,
+                    'quantity' => $product['product_quantity'],
                     'price' => (float) $product['product_price'],
                     'image_url' => $image_url,
                     'brand' => ''.Manufacturer::getNameById((int) $product['id_manufacturer']),
