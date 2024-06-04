@@ -252,6 +252,11 @@ class Dropday extends Module
             ),
             'products' => array()
         );
+
+        if ($state = State::getNameById($address->id_state)) {
+            $order_data['shipping_address']['state'] = (string) $state;
+        }
+
         if (!Configuration::get('DROPDAY_LIVE_MODE')) {
             $order_data['test'] = true;
         }
