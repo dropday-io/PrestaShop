@@ -25,9 +25,9 @@ gh repo clone dropday-io/PrestaShop .
 docker compose up
 ```
 
-For PrestaShop 1.6, run:
+For other version
 
 ```bash
 gh repo clone dropday-io/PrestaShop .
-docker compose -f docker-compose-16.yml up
+docker compose down --volumes && export TAG=1.7-apache && docker compose up
 ```
