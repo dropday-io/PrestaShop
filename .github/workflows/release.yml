@@ -12,7 +12,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Create ZIP Archive
-        run: zip -r release.zip . -x "*.git*" -x ".env"
+        run: zip -r dropday_${{ github.event.release.tag_name }}.zip . -x "*.git*" -x ".env"
 
       - name: Upload Release Asset via GitHub CLI
         env:
