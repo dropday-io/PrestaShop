@@ -17,8 +17,4 @@ jobs:
       - name: Upload Release Asset via GitHub CLI
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release upload "${{ github.event.release.tag_name }}" release.zip \
-            --clobber \
-            --repo "${{ github.repository }}" \
-            --name "dropday_${{ github.event.release.tag_name }}.zip"
+        run: gh release upload "${{ github.event.release.tag_name }}" dropday_${{ github.event.release.tag_name }}.zip --clobber --repo "${{ github.repository }}"
