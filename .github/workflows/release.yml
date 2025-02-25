@@ -12,9 +12,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Create ZIP Archive
-        run: zip -r dropday_${{ github.event.release.tag_name }}.zip . -x "*.git*" -x ".env"
+        run: zip -r dropday.zip . -x "*.git*" -x ".env" -x "docker-compose.yml"
 
       - name: Upload Release Asset via GitHub CLI
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "${{ github.event.release.tag_name }}" dropday_${{ github.event.release.tag_name }}.zip --clobber --repo "${{ github.repository }}"
+        run: gh release upload "${{ github.event.release.tag_name }}" dropday.zip --clobber --repo "${{ github.repository }}"
