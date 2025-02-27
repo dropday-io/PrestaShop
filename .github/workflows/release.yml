@@ -14,9 +14,9 @@ jobs:
       - name: Extract Module Version
         id: get_version
         run: |
-          MODULE_FILE=$(find . -type f -name "*.php" | head -n 1)
+          MODULE_FILE=$(find . -type f -name "dropday.php")
           if [ -z "$MODULE_FILE" ]; then
-            echo "No PHP file found. Exiting."
+            echo "dropday.php not found. Exiting."
             exit 1
           fi
           VERSION=$(sed -nE 's/^\s*\$this->version\s*=\s*["'\'']([^"'\'' ]+)["'\''];/\1/p' "$MODULE_FILE")
