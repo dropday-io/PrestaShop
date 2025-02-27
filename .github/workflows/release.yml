@@ -11,10 +11,25 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Extract Module Version
+        id: get_version
+        run: |
+          MODULE_FILE=$(find . -type f -name "*.php" | head -n 1)
+          if [ -z "$MODULE_FILE" ]; then
+            echo "No PHP file found. Exiting."
+            exit 1
+          fi
+          VERSION=$(sed -nE 's/^\s*\$this->version\s*=\s*["'\'']([^"'\'' ]+)["'\''];/\1/p' "$MODULE_FILE")
+          if [ -z "$VERSION" ]; then
+            echo "Version not found in $MODULE_FILE. Exiting."
+            exit 1
+          fi
+          echo "MODULE_VERSION=$VERSION" >> $GITHUB_ENV
+
       - name: Create ZIP Archive
-        run: zip -r dropday.zip . -x "*.git*" -x ".env" -x "docker-compose.yml"
+        run: zip -r "dropday-${MODULE_VERSION}.zip" . -x "*.git*" -x ".env" -x "docker-compose.yml"
 
       - name: Upload Release Asset via GitHub CLI
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "${{ github.event.release.tag_name }}" dropday.zip --clobber --repo "${{ github.repository }}"
+        run: gh release upload "${{ github.event.release.tag_name }}" "dropday-${MODULE_VERSION}.zip" --clobber --repo "${{ github.repository }}"
