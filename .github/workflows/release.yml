@@ -3,7 +3,7 @@ name: Attach ZIP to Release
 on:
   push:
     branches:
-      - create-release-workflow
+      - feat/create-release-workflow
 
 jobs:
   attach-zip:
