@@ -1,8 +1,9 @@
 name: Attach ZIP to Release
 
 on:
-  release:
-    types: [published]
+  push:
+    branches:
+      - master
 
 jobs:
   attach-zip:
@@ -14,8 +15,8 @@ jobs:
       - name: Extract Module Version
         id: get_version
         run: |
-          MODULE_FILE=$(find . -type f -name "dropday.php")
-          if [ -z "$MODULE_FILE" ]; then
+          MODULE_FILE="dropday.php"
+          if [ ! -f "$MODULE_FILE" ]; then
             echo "dropday.php not found. Exiting."
             exit 1
           fi
@@ -25,11 +26,20 @@ jobs:
             exit 1
           fi
           echo "MODULE_VERSION=$VERSION" >> $GITHUB_ENV
+          echo "VERSION=$VERSION"  # Display for debugging
 
       - name: Create ZIP Archive
         run: zip -r "dropday.zip" . -x "*.git*" -x ".env" -x "docker-compose.yml"
 
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${MODULE_VERSION}" "dropday.zip" \
+            --title "${MODULE_VERSION}" \
+            --notes "Release version ${MODULE_VERSION}."
+
       - name: Upload Release Asset via GitHub CLI
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "${{ github.event.release.tag_name }}" "dropday.zip" --clobber --repo "${{ github.repository }}"
+        run: gh release upload "${MODULE_VERSION}" "dropday.zip" --clobber --repo "${{ github.repository }}"
