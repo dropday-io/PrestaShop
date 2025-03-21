@@ -385,11 +385,11 @@ class Dropday extends Module
             $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             $result = json_decode($result, true);
             if ($httpcode == 200) {
-                Logger::addLog('[dropday] API request sent successfully :#'.$result['reference'], 1, null, 'API reference no', (int) $result['reference'], true);
+                Logger::addLog('[dropday] API request sent successfully :#'.$result['reference'], 1, null, 'Order', (int) $id_order, true);
             } elseif ($httpcode == 422) {
                 Logger::addLog('[dropday] Error: ' . json_encode($result['errors']), 3, null, 'Order', (int) $id_order, true);
             } else {
-                Logger::addLog('[dropday] Unknown error: ' . json_encode($result), 3, $httpcode, 'Order', $id_order, true);
+                Logger::addLog('[dropday] Unknown error: ' . json_encode($result), 3, $httpcode, 'Order', (int) $id_order, true);
             }
             error_log(json_encode($result));
         }
