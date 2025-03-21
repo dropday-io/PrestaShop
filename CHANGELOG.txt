@@ -1,3 +1,11 @@
+1.4.0
+
+- fix: Improve release workflow
+- fix: Add unit tests
+- fix: Add test bootstrap file
+- fix: Add gitignore file
+
+
 1.2.1
 
 - fix: Combinations of the same product are not all passed to the Order API bug

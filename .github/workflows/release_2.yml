@@ -27,7 +27,7 @@ jobs:
           echo "MODULE_VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Create ZIP Archive
-        run: zip -r "dropday.zip" . -x "*.git*" -x ".env" -x "docker-compose.yml"
+        run: zip -r "dropday.zip" . -x "*.git*" -x ".env" -x "docker-compose.yml" -x "vendor/*" -x "vendor/**/*" -x "tests/unit/README.md" -x "tests/README.md"
 
       - name: Upload Release Asset via GitHub CLI
         env:
