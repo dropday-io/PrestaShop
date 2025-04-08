@@ -14,3 +14,20 @@ Modules &rarr; Module Manager &rarr; Dropday
 
 * After the module has been installed, click on 'Configure';
 * Enter your API-key and Account ID from your Dropday Dashboard.
+
+## Docker
+
+For development or demo purposes you can run Docker to test this integration.
+
+For the latest PrestaShop:
+```bash
+gh repo clone dropday-io/PrestaShop .
+docker compose up
+```
+
+For other version
+
+```bash
+gh repo clone dropday-io/PrestaShop .
+docker compose down --volumes && export TAG=1.7-apache && docker compose up
+```

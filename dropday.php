@@ -42,7 +42,7 @@ class Dropday extends Module
     {
         $this->name = 'dropday';
         $this->tab = 'shipping_logistics';
-        $this->version = '1.2.0';
+        $this->version = '1.3.1';
         $this->author = 'Dropday support@dropday.nl';
         $this->need_instance = 0;
         $this->module_key = '11652b14d72adae8e5c3d8129167bde7';
@@ -65,8 +65,6 @@ class Dropday extends Module
         Configuration::updateValue('DROPDAY_LIVE_MODE', false);
 
         return parent::install() &&
-            $this->registerHook('header') &&
-            $this->registerHook('backOfficeHeader') &&
             $this->registerHook('actionOrderStatusUpdate') &&
             $this->registerHook('actionValidateOrder');
     }
@@ -261,11 +259,11 @@ class Dropday extends Module
             $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             $result = json_decode($result, true);
             if ($httpcode == 200) {
-                Logger::addLog('[dropday] API request sent successfully :#'.$result['reference'], 1, null, 'API reference no', (int) $result['reference'], true);
+                Logger::addLog('[dropday] API request sent successfully :#'.$result['reference'], 1, null, 'Order', (int) $id_order, true);
             } elseif ($httpcode == 422) {
                 Logger::addLog('[dropday] Error: ' . json_encode($result['errors']), 3, null, 'Order', (int) $id_order, true);
             } else {
-                Logger::addLog('[dropday] Unknown error: ' . json_encode($result), 3, $httpcode, 'Order', $id_order, true);
+                Logger::addLog('[dropday] Unknown error: ' . json_encode($result), 3, $httpcode, 'Order', (int) $id_order, true);
             }
             error_log(json_encode($result));
         }
@@ -300,6 +298,11 @@ class Dropday extends Module
             ),
             'products' => []
         );
+
+        if ($state = State::getNameById($address->id_state)) {
+            $order_data['shipping_address']['state'] = (string) $state;
+        }
+
         if (!Configuration::get('DROPDAY_LIVE_MODE')) {
             $order_data['test'] = true;
         }
@@ -307,18 +310,31 @@ class Dropday extends Module
         $products = $order->getProducts();
 
         foreach ($products as $product) {
-
-            $cat = new Category((int) $product['id_category_default'], (int) $order->id_lang);
+            
             $quantity = (int) (isset($product['customizationQuantityTotal']) && $product['customizationQuantityTotal'])
                 ? $product['customizationQuantityTotal']
                 : $product['product_quantity'];
+
+            $stockQuantity = false;
+            if (Configuration::get('PS_STOCK_MANAGEMENT')) {
+                $stockAvailable = StockAvailable::getQuantityAvailableByProduct($product['product_id'], $product['product_attribute_id'], $this->context->shop->id);
+                $stockQuantity = (int) $stockAvailable + (int) $quantity;
+            }
+
+            $ean13 = false;
+            if (Tools::strlen($product['product_ean13']) >= 13) {
+                $ean13 = $product['product_ean13'];
+            }
+
+            $cat = new Category((int) $product['id_category_default'], (int) $order->id_lang);
+
             $link_rewrite = $this->getProductLinkRewrite((int) $product['product_id'], (int) $order->id_lang);
 
             $image_url = isset($product['image'])
                 ? $this->context->link->getImageLink($link_rewrite, $product['image']->id, $this->imageTypeGetFormattedName('large'))
                 : null;
 
-            if ($productCustomizations = $cart->getProductCustomization($product['id_product'])) {
+            if ($productCustomizations = $cart->getProductCustomization($product['product_id'])) {
                 $custom = [];
 
                 $count = 1;
@@ -343,33 +359,49 @@ class Dropday extends Module
                 foreach ($custom as $id_customization => $customization) {
                     $product_data = array(
                         'external_id' => (int) $product['product_id'],
-                        'name' => ''.$product['product_name'],
-                        'reference' => ''.$this->getProductReference($product),
+                        'name' => (string) $product['product_name'],
+                        'reference' => (string) $this->getProductReference($product),
                         'quantity' => (int) $productCustomization['quantity'],
                         'price' => (float) $product['product_price'],
                         'image_url' => $image_url,
-                        'brand' => ''.Manufacturer::getNameById((int) $product['id_manufacturer']),
-                        'category' => ''.$cat->name,
-                        'supplier' => ''.Supplier::getNameById((int) $product['id_supplier']),
+                        'brand' => (string) Manufacturer::getNameById((int) $product['id_manufacturer']),
+                        'category' => (string) $cat->name,
+                        'supplier' => (string) Supplier::getNameById((int) $product['id_supplier']),
                         'custom' => $customization
                     );
 
-                    $order_data['products'][$product['id_product'] . $id_customization] = $product_data;
+                    if ($stockQuantity !== false) {
+                        $product_data['stock_quantity'] = $stockQuantity;
+                    }
+
+                    if ($ean13 !== false) {
+                        $product_data['ean13'] = $ean13;
+                    }
+
+                    $order_data['products'][$product['id_order_detail'] . '_' . $id_customization] = $product_data;
                 }
             } else {
                 $product_data = array(
                     'external_id' => (int) $product['product_id'],
-                    'name' => ''.$product['product_name'],
-                    'reference' => ''.$this->getProductReference($product),
+                    'name' => (string) $product['product_name'],
+                    'reference' => (string) $this->getProductReference($product),
                     'quantity' => $quantity,
                     'price' => (float) $product['product_price'],
                     'image_url' => $image_url,
-                    'brand' => ''.Manufacturer::getNameById((int) $product['id_manufacturer']),
-                    'category' => ''.$cat->name,
-                    'supplier' => ''.Supplier::getNameById((int) $product['id_supplier']),
+                    'brand' => (string) Manufacturer::getNameById((int) $product['id_manufacturer']),
+                    'category' => (string) $cat->name,
+                    'supplier' => (string) Supplier::getNameById((int) $product['id_supplier']),
                 );
 
-                $order_data['products'][$product['id_product']] = $product_data;
+                if ($stockQuantity !== false) {
+                    $product_data['stock_quantity'] = $stockQuantity;
+                }
+
+                if ($ean13 !== false) {
+                    $product_data['ean13'] = $ean13;
+                }
+
+                $order_data['products'][$product['id_order_detail']] = $product_data;
             }
 
             $order_data['products'] = array_values($order_data['products']);
