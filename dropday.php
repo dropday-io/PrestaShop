@@ -42,7 +42,7 @@ class Dropday extends Module
     {
         $this->name = 'dropday';
         $this->tab = 'shipping_logistics';
-        $this->version = '1.2.1';
+        $this->version = '1.3.2';
         $this->author = 'Dropday support@dropday.nl';
         $this->need_instance = 0;
         $this->module_key = '11652b14d72adae8e5c3d8129167bde7';
@@ -54,7 +54,7 @@ class Dropday extends Module
         $this->displayName = $this->l('Dropday');
         $this->description = $this->l('Order synchronisation with Dropday drop-shipping automation');
 
-        $this->ps_versions_compliancy = array('min' => '1.6', 'max' => _PS_VERSION_);
+        $this->ps_versions_compliancy = ['min' => '1.6', 'max' => _PS_VERSION_];
     }
 
     /**
@@ -118,19 +118,19 @@ class Dropday extends Module
             .'&configure='.$this->name.'&tab_module='.$this->tab.'&module_name='.$this->name;
         $helper->token = Tools::getAdminTokenLite('AdminModules');
 
-        $helper->tpl_vars = array(
+        $helper->tpl_vars = [
             'fields_value' => $this->getConfigFormValues(), /* Add values for your inputs */
             'languages' => $this->context->controller->getLanguages(),
             'id_language' => $this->context->language->id,
-        );
+        ];
 
-        $this->context->smarty->assign(array(
+        $this->context->smarty->assign([
             'module_dir' => $this->_path
-        ));
+        ]);
 
         $output = $this->context->smarty->fetch($this->local_path.'views/templates/admin/configure.tpl');
         
-        return $helper->generateForm(array($this->getConfigForm())).$output;
+        return $helper->generateForm($this->getConfigForm()) . $output;
     }
 
     /**
@@ -138,51 +138,51 @@ class Dropday extends Module
      */
     protected function getConfigForm()
     {
-        return array(
-            'form' => array(
-                'legend' => array(
-                'title' => $this->l('Settings'),
-                'icon' => 'icon-cogs',
-                ),
-                'input' => array(
-                    array(
+        return [
+            'form' => [
+                'legend' => [
+                    'title' => $this->l('Settings'),
+                    'icon' => 'icon-cogs',
+                ],
+                'input' => [
+                    [
                         'type' => 'switch',
                         'label' => $this->l('Live mode'),
                         'name' => 'DROPDAY_LIVE_MODE',
                         'is_bool' => true,
                         'desc' => $this->l('Use this module in live mode'),
-                        'values' => array(
-                            array(
+                        'values' => [
+                            [
                                 'id' => 'active_on',
                                 'value' => true,
                                 'label' => $this->l('Enabled')
-                            ),
-                            array(
+                            ],
+                            [
                                 'id' => 'active_off',
                                 'value' => false,
                                 'label' => $this->l('Disabled')
-                            )
-                        ),
-                    ),
-                    array(
+                            ]
+                        ],
+                    ],
+                    [
                         'col' => 6,
                         'type' => 'text',
                         'prefix' => '<i class="icon icon-key"></i>',
                         'name' => 'DROPDAY_ACCOUNT_APIKEY',
                         'label' => $this->l('API Key'),
-                    ),
-                    array(
+                    ],
+                    [
                         'col' => 6,
                         'type' => 'text',
                         'name' => 'DROPDAY_ACCOUNT_ID',
                         'label' => $this->l('Account ID'),
-                    ),
-                ),
-                'submit' => array(
+                    ],
+                ],
+                'submit' => [
                     'title' => $this->l('Save'),
-                ),
-            ),
-        );
+                ],
+            ],
+        ];
     }
 
     /**
@@ -190,11 +190,11 @@ class Dropday extends Module
      */
     protected function getConfigFormValues()
     {
-        return array(
+        return [
             'DROPDAY_LIVE_MODE' => Configuration::get('DROPDAY_LIVE_MODE'),
             'DROPDAY_ACCOUNT_ID' => Configuration::get('DROPDAY_ACCOUNT_ID'),
             'DROPDAY_ACCOUNT_APIKEY' => Configuration::get('DROPDAY_ACCOUNT_APIKEY', null),
-        );
+        ];
     }
 
     /**
@@ -226,20 +226,66 @@ class Dropday extends Module
         if (!Validate::isLoadedObject($order)) {
             return false;
         }
-        
+
+        $order_date = $this->getOrderData($order);
+
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $this->getApiUrl('orders'));
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+        curl_setopt($ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_PORT, 443);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($order_date));
+        if (!Configuration::get('PS_SSL_ENABLED') || 1) {
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+        }
+
+        $headers = array(
+            'Content-Type: application/json',
+            'Accept: application/json',
+            'Api-Key: '.Configuration::get('DROPDAY_ACCOUNT_APIKEY'),
+            'Account-Id: '.Configuration::get('DROPDAY_ACCOUNT_ID')
+        );
+
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+
+        $result = curl_exec($ch);
+
+        if (curl_errno($ch)) {
+            Logger::addLog('[dropday] error: ' . curl_error($ch), 3, null, 'Order', (int) $id_order, true);
+        } else {
+            $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $result = json_decode($result, true);
+            if ($httpcode == 200) {
+                Logger::addLog('[dropday] API request sent successfully :#'.$result['reference'], 1, null, 'Order', (int) $id_order, true);
+            } elseif ($httpcode == 422) {
+                Logger::addLog('[dropday] Error: ' . json_encode($result['errors']), 3, null, 'Order', (int) $id_order, true);
+            } else {
+                Logger::addLog('[dropday] Unknown error: ' . json_encode($result), 3, $httpcode, 'Order', (int) $id_order, true);
+            }
+            error_log(json_encode($result));
+        }
+
+        curl_close($ch);
+    }
+
+    public function getOrderData(Order $order)
+    {
         $cart = new Cart((int)$order->id_cart);
         
         $shipping_cost = $cart->getTotalShippingCost(null, true, null);
         $shop = new Shop((int) $order->id_shop);
         $customer = new Customer((int) $order->id_customer);
         $address = new Address((int) $order->id_address_delivery);
-        $order_data = array(
+        $orderData = [
             'external_id' => $order->reference,
             'source' => $shop->name,
             'total' => (float) $order->getOrdersTotalPaid(),
             'shipping_cost' => (float) $shipping_cost,
             'email' => $customer->email,
-            'shipping_address' => array(
+            'shipping_address' => [
                 'first_name' => $address->firstname,
                 'last_name' => $address->lastname,
                 'company_name' => $address->company,
@@ -249,15 +295,25 @@ class Dropday extends Module
                 'city' => $address->city,
                 'country' => Country::getNameById($order->id_lang, (int) $address->id_country),
                 'phone' => $address->phone,
-            ),
-            'products' => array()
-        );
-        if (!Configuration::get('DROPDAY_LIVE_MODE')) {
-            $order_data['test'] = true;
+            ],
+            'products' => []
+        ];
+
+        if ($state = State::getNameById($address->id_state)) {
+            $orderData['shipping_address']['state'] = (string) $state;
         }
+
+        if (!Configuration::get('DROPDAY_LIVE_MODE')) {
+            $orderData['test'] = true;
+        }
+        
         $products = $order->getProducts();
 
         foreach ($products as $product) {
+            
+            $quantity = (int) (isset($product['customizationQuantityTotal']) && $product['customizationQuantityTotal'])
+                ? $product['customizationQuantityTotal']
+                : $product['product_quantity'];
 
             $stockQuantity = false;
             if (Configuration::get('PS_STOCK_MANAGEMENT')) {
@@ -271,9 +327,7 @@ class Dropday extends Module
             }
 
             $cat = new Category((int) $product['id_category_default'], (int) $order->id_lang);
-            $quantity = (int) (isset($product['customizationQuantityTotal']) && $product['customizationQuantityTotal'])
-                ? $product['customizationQuantityTotal']
-                : $product['product_quantity'];
+
             $link_rewrite = $this->getProductLinkRewrite((int) $product['product_id'], (int) $order->id_lang);
 
             $image_url = isset($product['image'])
@@ -303,18 +357,18 @@ class Dropday extends Module
                 }
 
                 foreach ($custom as $id_customization => $customization) {
-                    $product_data = array(
+                    $product_data = [
                         'external_id' => (int) $product['product_id'],
-                        'name' => ''.$product['product_name'],
-                        'reference' => ''.$this->getProductReference($product),
+                        'name' => (string) $product['product_name'],
+                        'reference' => (string) $this->getProductReference($product),
                         'quantity' => (int) $productCustomization['quantity'],
                         'price' => (float) $product['product_price'],
                         'image_url' => $image_url,
-                        'brand' => ''.Manufacturer::getNameById((int) $product['id_manufacturer']),
-                        'category' => ''.$cat->name,
-                        'supplier' => ''.Supplier::getNameById((int) $product['id_supplier']),
+                        'brand' => (string) Manufacturer::getNameById((int) $product['id_manufacturer']),
+                        'category' => (string) $cat->name,
+                        'supplier' => (string) Supplier::getNameById((int) $product['id_supplier']),
                         'custom' => $customization
-                    );
+                    ];
 
                     if ($stockQuantity !== false) {
                         $product_data['stock_quantity'] = $stockQuantity;
@@ -324,20 +378,20 @@ class Dropday extends Module
                         $product_data['ean13'] = $ean13;
                     }
 
-                    $order_data['products'][$product['id_order_detail'] . '_' . $id_customization] = $product_data;
+                    $orderData['products'][$product['id_order_detail'] . '_' . $id_customization] = $product_data;
                 }
             } else {
-                $product_data = array(
+                $product_data = [
                     'external_id' => (int) $product['product_id'],
-                    'name' => ''.$product['product_name'],
-                    'reference' => ''.$this->getProductReference($product),
-                    'quantity' => $product['product_quantity'],
+                    'name' => (string) $product['product_name'],
+                    'reference' => (string) $this->getProductReference($product),
+                    'quantity' => $quantity,
                     'price' => (float) $product['product_price'],
                     'image_url' => $image_url,
-                    'brand' => ''.Manufacturer::getNameById((int) $product['id_manufacturer']),
-                    'category' => ''.$cat->name,
-                    'supplier' => ''.Supplier::getNameById((int) $product['id_supplier']),
-                );
+                    'brand' => (string) Manufacturer::getNameById((int) $product['id_manufacturer']),
+                    'category' => (string) $cat->name,
+                    'supplier' => (string) Supplier::getNameById((int) $product['id_supplier']),
+                ];
 
                 if ($stockQuantity !== false) {
                     $product_data['stock_quantity'] = $stockQuantity;
@@ -347,46 +401,17 @@ class Dropday extends Module
                     $product_data['ean13'] = $ean13;
                 }
 
-                $order_data['products'][$product['id_order_detail']] = $product_data;
+                $orderData['products'][$product['id_order_detail']] = $product_data;
+            }
+
+            $orderData['products'] = array_values($orderData['products']);
+                        
+            if (Tools::strlen($product['ean13']) >= 13) {
+                $product_data['ean13'] = $product['ean13'];
             }
         }
 
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $this->getApiUrl('orders'));
-        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
-        curl_setopt($ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_POST, 1);
-        curl_setopt($ch, CURLOPT_PORT, 443);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($order_data));
-        if (!Configuration::get('PS_SSL_ENABLED') || 1) {
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-        }
-
-        $headers = array(
-            'Content-Type: application/json',
-            'Accept: application/json',
-            'Api-Key: '.Configuration::get('DROPDAY_ACCOUNT_APIKEY'),
-            'Account-Id: '.Configuration::get('DROPDAY_ACCOUNT_ID')
-        );
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-        $result = curl_exec($ch);
-        if (curl_errno($ch)) {
-            Logger::addLog('[dropday] error: ' . curl_error($ch), 3, null, 'Order', (int) $id_order, true);
-        } else {
-            $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            $result = json_decode($result, true);
-            if ($httpcode == 200) {
-                Logger::addLog('[dropday] API request sent successfully :#'.$result['reference'], 1, null, 'API reference no', (int) $result['reference'], true);
-            } elseif ($httpcode == 422) {
-                Logger::addLog('[dropday] Error: ' . json_encode($result['errors']), 3, null, 'Order', (int) $id_order, true);
-            } else {
-                Logger::addLog('[dropday] Unknown error: ' . json_encode($result), 3, $httpcode, 'Order', $id_order, true);
-            }
-            error_log(json_encode($result));
-        }
-        curl_close($ch);
+        return $orderData;
     }
 
     /**
@@ -409,20 +434,18 @@ class Dropday extends Module
 
     /**
      * @param $params
-     * @return false
      */
     public function hookActionOrderStatusUpdate($params)
     {
-        return $this->handleOrder((int) $params['id_order'], $params['newOrderStatus']);
+        $this->handleOrder((int) $params['id_order'], $params['newOrderStatus']);
     }
 
     /**
      * @param $params
-     * @return false
      */
     public function hookActionValidateOrder($params)
     {
-        return $this->handleOrder((int) $params['order']->id, $params['orderStatus']);
+        $this->handleOrder((int) $params['order']->id, $params['orderStatus']);
     }
 
     /**
