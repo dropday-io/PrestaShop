@@ -28,10 +28,21 @@ jobs:
           echo "MODULE_VERSION=$VERSION" >> $GITHUB_ENV
           echo "VERSION=$VERSION"  # Display for debugging
 
+      - name: Check if release already exists
+        id: check_release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          RELEASE_EXISTS=$(gh release view "${MODULE_VERSION}" > /dev/null 2>&1 && echo "true" || echo "false")
+          echo "RELEASE_EXISTS=${RELEASE_EXISTS}" >> $GITHUB_ENV
+          echo "Checking if release ${MODULE_VERSION} exists: ${RELEASE_EXISTS}"
+
       - name: Create ZIP Archive
+        if: env.RELEASE_EXISTS == 'false'
         run: zip -r "dropday.zip" . -x "*.git*" -x ".env" -x "docker-compose.yml"
 
       - name: Create GitHub Release
+        if: env.RELEASE_EXISTS == 'false'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -40,6 +51,7 @@ jobs:
             --notes "Release version ${MODULE_VERSION}."
 
       - name: Upload Release Asset via GitHub CLI
+        if: env.RELEASE_EXISTS == 'false'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release upload "${MODULE_VERSION}" "dropday.zip" --clobber --repo "${{ github.repository }}"
