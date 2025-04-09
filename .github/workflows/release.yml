@@ -29,7 +29,21 @@ jobs:
           echo "VERSION=$VERSION"  # Display for debugging
 
       - name: Create ZIP Archive
-        run: zip -r "dropday.zip" . -x "*.git*" -x ".env" -x "docker-compose.yml"
+        if: env.RELEASE_EXISTS == 'false'
+        run: |
+          # Maak een tijdelijke map voor de module
+          mkdir -p temp/dropday
+          
+          # Kopieer alle nodige bestanden naar de dropday map
+          rsync -av --exclude=".git" --exclude=".github" --exclude="temp" --exclude=".env" --exclude="docker-compose.yml" ./ temp/dropday/
+          
+          # Ga naar de temp directory en maak de ZIP
+          cd temp
+          zip -r "../dropday.zip" dropday
+          cd ..
+          
+          # Opruimen
+          rm -rf temp
 
       - name: Create GitHub Release
         env:
