@@ -54,7 +54,7 @@ class Dropday extends Module
         $this->displayName = $this->l('Dropday');
         $this->description = $this->l('Order synchronisation with Dropday drop-shipping automation');
 
-        $this->ps_versions_compliancy = array('min' => '1.6', 'max' => _PS_VERSION_);
+        $this->ps_versions_compliancy = ['min' => '1.6', 'max' => _PS_VERSION_];
     }
 
     /**
@@ -118,19 +118,19 @@ class Dropday extends Module
             .'&configure='.$this->name.'&tab_module='.$this->tab.'&module_name='.$this->name;
         $helper->token = Tools::getAdminTokenLite('AdminModules');
 
-        $helper->tpl_vars = array(
+        $helper->tpl_vars = [
             'fields_value' => $this->getConfigFormValues(), /* Add values for your inputs */
             'languages' => $this->context->controller->getLanguages(),
             'id_language' => $this->context->language->id,
-        );
+        ];
 
-        $this->context->smarty->assign(array(
+        $this->context->smarty->assign([
             'module_dir' => $this->_path
-        ));
+        ]);
 
         $output = $this->context->smarty->fetch($this->local_path.'views/templates/admin/configure.tpl');
         
-        return $helper->generateForm(array($this->getConfigForm())).$output;
+        return $helper->generateForm($this->getConfigForm()) . $output;
     }
 
     /**
@@ -138,51 +138,51 @@ class Dropday extends Module
      */
     protected function getConfigForm()
     {
-        return array(
-            'form' => array(
-                'legend' => array(
-                'title' => $this->l('Settings'),
-                'icon' => 'icon-cogs',
-                ),
-                'input' => array(
-                    array(
+        return [
+            'form' => [
+                'legend' => [
+                    'title' => $this->l('Settings'),
+                    'icon' => 'icon-cogs',
+                ],
+                'input' => [
+                    [
                         'type' => 'switch',
                         'label' => $this->l('Live mode'),
                         'name' => 'DROPDAY_LIVE_MODE',
                         'is_bool' => true,
                         'desc' => $this->l('Use this module in live mode'),
-                        'values' => array(
-                            array(
+                        'values' => [
+                            [
                                 'id' => 'active_on',
                                 'value' => true,
                                 'label' => $this->l('Enabled')
-                            ),
-                            array(
+                            ],
+                            [
                                 'id' => 'active_off',
                                 'value' => false,
                                 'label' => $this->l('Disabled')
-                            )
-                        ),
-                    ),
-                    array(
+                            ]
+                        ],
+                    ],
+                    [
                         'col' => 6,
                         'type' => 'text',
                         'prefix' => '<i class="icon icon-key"></i>',
                         'name' => 'DROPDAY_ACCOUNT_APIKEY',
                         'label' => $this->l('API Key'),
-                    ),
-                    array(
+                    ],
+                    [
                         'col' => 6,
                         'type' => 'text',
                         'name' => 'DROPDAY_ACCOUNT_ID',
                         'label' => $this->l('Account ID'),
-                    ),
-                ),
-                'submit' => array(
+                    ],
+                ],
+                'submit' => [
                     'title' => $this->l('Save'),
-                ),
-            ),
-        );
+                ],
+            ],
+        ];
     }
 
     /**
@@ -190,11 +190,11 @@ class Dropday extends Module
      */
     protected function getConfigFormValues()
     {
-        return array(
+        return [
             'DROPDAY_LIVE_MODE' => Configuration::get('DROPDAY_LIVE_MODE'),
             'DROPDAY_ACCOUNT_ID' => Configuration::get('DROPDAY_ACCOUNT_ID'),
             'DROPDAY_ACCOUNT_APIKEY' => Configuration::get('DROPDAY_ACCOUNT_APIKEY', null),
-        );
+        ];
     }
 
     /**
@@ -279,13 +279,13 @@ class Dropday extends Module
         $shop = new Shop((int) $order->id_shop);
         $customer = new Customer((int) $order->id_customer);
         $address = new Address((int) $order->id_address_delivery);
-        $order_data = array(
+        $orderData = [
             'external_id' => $order->reference,
             'source' => $shop->name,
             'total' => (float) $order->getOrdersTotalPaid(),
             'shipping_cost' => (float) $shipping_cost,
             'email' => $customer->email,
-            'shipping_address' => array(
+            'shipping_address' => [
                 'first_name' => $address->firstname,
                 'last_name' => $address->lastname,
                 'company_name' => $address->company,
@@ -295,16 +295,16 @@ class Dropday extends Module
                 'city' => $address->city,
                 'country' => Country::getNameById($order->id_lang, (int) $address->id_country),
                 'phone' => $address->phone,
-            ),
+            ],
             'products' => []
-        );
+        ];
 
         if ($state = State::getNameById($address->id_state)) {
-            $order_data['shipping_address']['state'] = (string) $state;
+            $orderData['shipping_address']['state'] = (string) $state;
         }
 
         if (!Configuration::get('DROPDAY_LIVE_MODE')) {
-            $order_data['test'] = true;
+            $orderData['test'] = true;
         }
         
         $products = $order->getProducts();
@@ -357,7 +357,7 @@ class Dropday extends Module
                 }
 
                 foreach ($custom as $id_customization => $customization) {
-                    $product_data = array(
+                    $product_data = [
                         'external_id' => (int) $product['product_id'],
                         'name' => (string) $product['product_name'],
                         'reference' => (string) $this->getProductReference($product),
@@ -368,7 +368,7 @@ class Dropday extends Module
                         'category' => (string) $cat->name,
                         'supplier' => (string) Supplier::getNameById((int) $product['id_supplier']),
                         'custom' => $customization
-                    );
+                    ];
 
                     if ($stockQuantity !== false) {
                         $product_data['stock_quantity'] = $stockQuantity;
@@ -378,10 +378,10 @@ class Dropday extends Module
                         $product_data['ean13'] = $ean13;
                     }
 
-                    $order_data['products'][$product['id_order_detail'] . '_' . $id_customization] = $product_data;
+                    $orderData['products'][$product['id_order_detail'] . '_' . $id_customization] = $product_data;
                 }
             } else {
-                $product_data = array(
+                $product_data = [
                     'external_id' => (int) $product['product_id'],
                     'name' => (string) $product['product_name'],
                     'reference' => (string) $this->getProductReference($product),
@@ -391,7 +391,7 @@ class Dropday extends Module
                     'brand' => (string) Manufacturer::getNameById((int) $product['id_manufacturer']),
                     'category' => (string) $cat->name,
                     'supplier' => (string) Supplier::getNameById((int) $product['id_supplier']),
-                );
+                ];
 
                 if ($stockQuantity !== false) {
                     $product_data['stock_quantity'] = $stockQuantity;
@@ -401,17 +401,17 @@ class Dropday extends Module
                     $product_data['ean13'] = $ean13;
                 }
 
-                $order_data['products'][$product['id_order_detail']] = $product_data;
+                $orderData['products'][$product['id_order_detail']] = $product_data;
             }
 
-            $order_data['products'] = array_values($order_data['products']);
+            $orderData['products'] = array_values($orderData['products']);
                         
             if (Tools::strlen($product['ean13']) >= 13) {
                 $product_data['ean13'] = $product['ean13'];
             }
         }
 
-        return $order_data;
+        return $orderData;
     }
 
     /**
