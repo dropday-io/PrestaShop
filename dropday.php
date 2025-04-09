@@ -139,49 +139,51 @@ class Dropday extends Module
     protected function getConfigForm()
     {
         return [
-            'form' => [
-                'legend' => [
-                    'title' => $this->l('Settings'),
-                    'icon' => 'icon-cogs',
-                ],
-                'input' => [
-                    [
-                        'type' => 'switch',
-                        'label' => $this->l('Live mode'),
-                        'name' => 'DROPDAY_LIVE_MODE',
-                        'is_bool' => true,
-                        'desc' => $this->l('Use this module in live mode'),
-                        'values' => [
-                            [
-                                'id' => 'active_on',
-                                'value' => true,
-                                'label' => $this->l('Enabled')
+            [
+                'form' => [
+                    'legend' => [
+                        'title' => $this->l('Settings'),
+                        'icon' => 'icon-cogs',
+                    ],
+                    'input' => [
+                        [
+                            'type' => 'switch',
+                            'label' => $this->l('Live mode'),
+                            'name' => 'DROPDAY_LIVE_MODE',
+                            'is_bool' => true,
+                            'desc' => $this->l('Use this module in live mode'),
+                            'values' => [
+                                [
+                                    'id' => 'active_on',
+                                    'value' => true,
+                                    'label' => $this->l('Enabled')
+                                ],
+                                [
+                                    'id' => 'active_off',
+                                    'value' => false,
+                                    'label' => $this->l('Disabled')
+                                ]
                             ],
-                            [
-                                'id' => 'active_off',
-                                'value' => false,
-                                'label' => $this->l('Disabled')
-                            ]
+                        ],
+                        [
+                            'col' => 6,
+                            'type' => 'text',
+                            'prefix' => '<i class="icon icon-key"></i>',
+                            'name' => 'DROPDAY_ACCOUNT_APIKEY',
+                            'label' => $this->l('API Key'),
+                        ],
+                        [
+                            'col' => 6,
+                            'type' => 'text',
+                            'name' => 'DROPDAY_ACCOUNT_ID',
+                            'label' => $this->l('Account ID'),
                         ],
                     ],
-                    [
-                        'col' => 6,
-                        'type' => 'text',
-                        'prefix' => '<i class="icon icon-key"></i>',
-                        'name' => 'DROPDAY_ACCOUNT_APIKEY',
-                        'label' => $this->l('API Key'),
-                    ],
-                    [
-                        'col' => 6,
-                        'type' => 'text',
-                        'name' => 'DROPDAY_ACCOUNT_ID',
-                        'label' => $this->l('Account ID'),
+                    'submit' => [
+                        'title' => $this->l('Save'),
                     ],
                 ],
-                'submit' => [
-                    'title' => $this->l('Save'),
-                ],
-            ],
+            ]
         ];
     }
 
