@@ -37,7 +37,8 @@ jobs:
         run: |
           gh release create "${MODULE_VERSION}" "dropday.zip" \
             --title "${MODULE_VERSION}" \
-            --notes "Release version ${MODULE_VERSION}."
+            --notes "Release version ${MODULE_VERSION}." \
+            --draft
 
       - name: Upload Release Asset via GitHub CLI
         env:
