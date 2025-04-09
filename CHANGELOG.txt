@@ -1,3 +1,7 @@
+latest
+
+- feat: Make abstraction for retrieving order data, to make it overridable
+
 1.2.1
 
 - fix: Combinations of the same product are not all passed to the Order API bug
