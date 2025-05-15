@@ -42,7 +42,7 @@ class Dropday extends Module
     {
         $this->name = 'dropday';
         $this->tab = 'shipping_logistics';
-        $this->version = '1.3.2';
+        $this->version = '1.4.0';
         $this->author = 'Dropday support@dropday.nl';
         $this->need_instance = 0;
         $this->module_key = '11652b14d72adae8e5c3d8129167bde7';
@@ -139,49 +139,51 @@ class Dropday extends Module
     protected function getConfigForm()
     {
         return [
-            'form' => [
-                'legend' => [
-                    'title' => $this->l('Settings'),
-                    'icon' => 'icon-cogs',
-                ],
-                'input' => [
-                    [
-                        'type' => 'switch',
-                        'label' => $this->l('Live mode'),
-                        'name' => 'DROPDAY_LIVE_MODE',
-                        'is_bool' => true,
-                        'desc' => $this->l('Use this module in live mode'),
-                        'values' => [
-                            [
-                                'id' => 'active_on',
-                                'value' => true,
-                                'label' => $this->l('Enabled')
+            [
+                'form' => [
+                    'legend' => [
+                        'title' => $this->l('Settings'),
+                        'icon' => 'icon-cogs',
+                    ],
+                    'input' => [
+                        [
+                            'type' => 'switch',
+                            'label' => $this->l('Live mode'),
+                            'name' => 'DROPDAY_LIVE_MODE',
+                            'is_bool' => true,
+                            'desc' => $this->l('Use this module in live mode'),
+                            'values' => [
+                                [
+                                    'id' => 'active_on',
+                                    'value' => true,
+                                    'label' => $this->l('Enabled')
+                                ],
+                                [
+                                    'id' => 'active_off',
+                                    'value' => false,
+                                    'label' => $this->l('Disabled')
+                                ]
                             ],
-                            [
-                                'id' => 'active_off',
-                                'value' => false,
-                                'label' => $this->l('Disabled')
-                            ]
+                        ],
+                        [
+                            'col' => 6,
+                            'type' => 'text',
+                            'prefix' => '<i class="icon icon-key"></i>',
+                            'name' => 'DROPDAY_ACCOUNT_APIKEY',
+                            'label' => $this->l('API Key'),
+                        ],
+                        [
+                            'col' => 6,
+                            'type' => 'text',
+                            'name' => 'DROPDAY_ACCOUNT_ID',
+                            'label' => $this->l('Account ID'),
                         ],
                     ],
-                    [
-                        'col' => 6,
-                        'type' => 'text',
-                        'prefix' => '<i class="icon icon-key"></i>',
-                        'name' => 'DROPDAY_ACCOUNT_APIKEY',
-                        'label' => $this->l('API Key'),
-                    ],
-                    [
-                        'col' => 6,
-                        'type' => 'text',
-                        'name' => 'DROPDAY_ACCOUNT_ID',
-                        'label' => $this->l('Account ID'),
+                    'submit' => [
+                        'title' => $this->l('Save'),
                     ],
                 ],
-                'submit' => [
-                    'title' => $this->l('Save'),
-                ],
-            ],
+            ]
         ];
     }
 
@@ -363,6 +365,7 @@ class Dropday extends Module
                         'reference' => (string) $this->getProductReference($product),
                         'quantity' => (int) $productCustomization['quantity'],
                         'price' => (float) $product['product_price'],
+                        'purchase_price' => (float) $product['wholesale_price'],
                         'image_url' => $image_url,
                         'brand' => (string) Manufacturer::getNameById((int) $product['id_manufacturer']),
                         'category' => (string) $cat->name,
@@ -387,6 +390,7 @@ class Dropday extends Module
                     'reference' => (string) $this->getProductReference($product),
                     'quantity' => $quantity,
                     'price' => (float) $product['product_price'],
+                    'purchase_price' => (float) $product['wholesale_price'],
                     'image_url' => $image_url,
                     'brand' => (string) Manufacturer::getNameById((int) $product['id_manufacturer']),
                     'category' => (string) $cat->name,

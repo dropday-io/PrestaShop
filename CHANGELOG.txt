@@ -1,6 +1,6 @@
 latest
 
-- feat: Make abstraction for retrieving order data, to make it overridable
+- Release info: https://github.com/dropday-io/PrestaShop/releases
 
 1.2.1
 
