@@ -1,0 +1,18 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# About this module
+
+This module is a bridge between PrestaShop and Dropday. The API docs can be found here: https://docs.dropday.io.
+
+Send orders to Dropday is the core feature of this module.
+
+## Docker
+
+Interact with the application that Dropday module runs in when developing using Docker:
+
+```bash
+docker compose exec {command}
+```
