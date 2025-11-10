@@ -42,7 +42,7 @@ class Dropday extends Module
     {
         $this->name = 'dropday';
         $this->tab = 'shipping_logistics';
-        $this->version = '1.4.0';
+        $this->version = '1.5.0';
         $this->author = 'Dropday support@dropday.nl';
         $this->need_instance = 0;
         $this->module_key = '11652b14d72adae8e5c3d8129167bde7';
@@ -65,8 +65,7 @@ class Dropday extends Module
         Configuration::updateValue('DROPDAY_LIVE_MODE', false);
 
         return parent::install() &&
-            $this->registerHook('actionOrderStatusUpdate') &&
-            $this->registerHook('actionValidateOrder');
+            $this->registerHook('actionOrderStatusUpdate');
     }
 
     /**
@@ -138,6 +137,22 @@ class Dropday extends Module
      */
     protected function getConfigForm()
     {
+        // Get all order states for the select options
+        $orderStates = OrderState::getOrderStates($this->context->language->id);
+        $orderStateOptions = [
+            [
+                'id' => 'default',
+                'name' => $this->l('Default behaviour (hookPaymentConfirmation)')
+            ]
+        ];
+        
+        foreach ($orderStates as $state) {
+            $orderStateOptions[] = [
+                'id' => $state['id_order_state'],
+                'name' => $state['name']
+            ];
+        }
+
         return [
             [
                 'form' => [
@@ -178,6 +193,20 @@ class Dropday extends Module
                             'name' => 'DROPDAY_ACCOUNT_ID',
                             'label' => $this->l('Account ID'),
                         ],
+                        [
+                            'type' => 'select',
+                            'label' => $this->l('Order status trigger'),
+                            'desc' => $this->l('Select which order statuses should trigger sending orders to Dropday. Select "Default behaviour" to use hookPaymentConfirmation only.'),
+                            'name' => 'DROPDAY_ORDER_STATUSES[]',
+                            'multiple' => true,
+                            'size' => is_array($orderStateOptions) ? count($orderStateOptions) : 8,
+                            'col' => 6,
+                            'options' => [
+                                'query' => $orderStateOptions,
+                                'id' => 'id',
+                                'name' => 'name'
+                            ]
+                        ],
                     ],
                     'submit' => [
                         'title' => $this->l('Save'),
@@ -192,10 +221,18 @@ class Dropday extends Module
      */
     protected function getConfigFormValues()
     {
+        $orderStatuses = Configuration::get('DROPDAY_ORDER_STATUSES');
+        if (!$orderStatuses) {
+            $orderStatuses = ['default']; // Default behavior
+        } elseif (is_string($orderStatuses)) {
+            $orderStatuses = json_decode($orderStatuses, true) ?: ['default'];
+        }
+        
         return [
             'DROPDAY_LIVE_MODE' => Configuration::get('DROPDAY_LIVE_MODE'),
             'DROPDAY_ACCOUNT_ID' => Configuration::get('DROPDAY_ACCOUNT_ID'),
             'DROPDAY_ACCOUNT_APIKEY' => Configuration::get('DROPDAY_ACCOUNT_APIKEY', null),
+            'DROPDAY_ORDER_STATUSES[]' => $orderStatuses,
         ];
     }
 
@@ -205,10 +242,32 @@ class Dropday extends Module
     protected function postProcess()
     {
         $form_values = $this->getConfigFormValues();
+        $defaultBehaviourSelected = false;
+        
         foreach (array_keys($form_values) as $key) {
-            Configuration::updateValue($key, Tools::getValue($key));
+            // Handle order statuses specially
+            if ($key === 'DROPDAY_ORDER_STATUSES[]') {
+                $orderStatuses = Tools::getValue('DROPDAY_ORDER_STATUSES');
+                
+                // If default is selected or nothing is selected, remove configuration
+                if (!$orderStatuses || in_array('default', $orderStatuses)) {
+                    Configuration::deleteByName('DROPDAY_ORDER_STATUSES');
+                    $defaultBehaviourSelected = true;
+                } else {
+                    // Store as JSON string
+                    Configuration::updateValue('DROPDAY_ORDER_STATUSES', json_encode($orderStatuses));
+                }
+            } else {
+                Configuration::updateValue($key, Tools::getValue($key));
+            }
         }
-        return $this->displayConfirmation($this->l('Settings updated successfully!'));
+        
+        // Show appropriate confirmation message
+        if ($defaultBehaviourSelected) {
+            return $this->displayConfirmation($this->l('Default behaviour is reset: order is send when marked as paid'));
+        } else {
+            return $this->displayConfirmation($this->l('Settings updated successfully!'));
+        }
     }
 
     /**
@@ -218,7 +277,7 @@ class Dropday extends Module
      */
     public function handleOrder($id_order, OrderState $status)
     {
-        if (!$id_order || !Validate::isLoadedObject($status) || !$status->paid) {
+        if (!$id_order || !Validate::isLoadedObject($status) || !$this->shouldHandleOrderStatus($status)) {
             return false;
         }
 
@@ -271,6 +330,33 @@ class Dropday extends Module
         }
 
         curl_close($ch);
+    }
+
+    /**
+     * Determines if an order should be handled based on configured order statuses
+     * 
+     * @param OrderState $status
+     * @return bool
+     */
+    private function shouldHandleOrderStatus(OrderState $status)
+    {
+        $configuredStatuses = Configuration::get('DROPDAY_ORDER_STATUSES');
+        
+        // If no custom configuration exists, use default behavior (check if paid)
+        if (!$configuredStatuses) {
+            return $status->paid;
+        }
+        
+        // Parse configured statuses
+        $configuredStatuses = json_decode($configuredStatuses, true);
+        
+        // If configuration is invalid or empty, fallback to default behavior
+        if (!is_array($configuredStatuses) || count($configuredStatuses) === 0) {
+            return $status->paid;
+        }
+        
+        // Check if current status is in configured statuses
+        return in_array($status->id, $configuredStatuses);
     }
 
     public function getOrderData(Order $order)
@@ -444,14 +530,6 @@ class Dropday extends Module
     public function hookActionOrderStatusUpdate($params)
     {
         $this->handleOrder((int) $params['id_order'], $params['newOrderStatus']);
-    }
-
-    /**
-     * @param $params
-     */
-    public function hookActionValidateOrder($params)
-    {
-        $this->handleOrder((int) $params['order']->id, $params['orderStatus']);
     }
 
     /**

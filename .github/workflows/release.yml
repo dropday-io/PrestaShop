@@ -44,7 +44,7 @@ jobs:
           mkdir -p temp/dropday
           
           # Kopieer alle nodige bestanden naar de dropday map
-          rsync -av --exclude=".git" --exclude=".github" --exclude="temp" --exclude=".env" --exclude="docker-compose.yml" ./ temp/dropday/
+          rsync -av --exclude=".git" --exclude=".github" --exclude=".cursor" --exclude="temp" --exclude=".env" --exclude="docker-compose.yml" ./ temp/dropday/
           
           # Ga naar de temp directory en maak de ZIP
           cd temp
