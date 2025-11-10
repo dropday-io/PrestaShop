@@ -1,0 +1,32 @@
+name: Task
+description: A small change or chore to keep things moving.
+labels: ["task"]
+body:
+  - type: textarea
+    id: user-story
+    attributes:
+      label: Task description
+      description: What outcome does this task support?
+      placeholder: "Example: Export the order history to a CSV file and send it to warehouse"
+    validations:
+      required: true
+  - type: textarea
+    id: due-date
+    attributes:
+      label: When
+      description: When should this task be completed?
+      placeholder: |
+        Examples:
+        - Before specific date
+        - When x migration i complete
+        - When feature x is released
+    validations:
+      required: false
+  - type: textarea
+    id: context
+    attributes:
+      label: Add more context
+      description: Scope, links, or notes (optional).
+      placeholder: "Short bullet points are fine."
+    validations:
+      required: false

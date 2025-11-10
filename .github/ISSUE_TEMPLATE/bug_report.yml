@@ -1,0 +1,42 @@
+name: Bug
+description: Report a problem so we can fix it.
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: Bug description
+      description: Describe the issue. Add screenshots or links if helpful.
+      placeholder: "Example: The login button is not working on my mobile device."
+    validations:
+      required: true
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Impact
+      description: How disruptive is this?
+      multiple: true
+      options:
+        - High
+        - Medium
+        - Low
+    validations:
+      required: true
+  - type: textarea
+    id: user-story
+    attributes:
+      label: User story
+      description: Who is affected and what do they need?
+      placeholder: "As a [role], I want [something to work] so that [benefit]."
+    validations:
+      required: false
+  - type: textarea
+    id: reproduction-steps
+    attributes:
+      label: Steps to reproduce (optional)
+      placeholder: |
+        1. Go to …
+        2. Click …
+        3. See …
+    validations:
+      required: false
