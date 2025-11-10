@@ -1,0 +1,32 @@
+name: Feature
+description: Suggest a new feature to improve your shop.
+labels: ["feature"]
+body:
+  - type: textarea
+    id: user-story
+    attributes:
+      label: User story
+      description: Keep it simple and focused.
+      placeholder: "As a [role], I want [capability] so that [benefit]."
+    validations:
+      required: true
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Impact
+      description: How much will this help the project moving forward?
+      multiple: true
+      options:
+        - High
+        - Medium
+        - Low
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Add more context
+      description: Scope, links, or notes (optional).
+      placeholder: "Short bullet points are fine."
+    validations:
+      required: false
