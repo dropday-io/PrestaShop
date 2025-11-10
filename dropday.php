@@ -36,6 +36,16 @@ class Dropday extends Module
     protected $api_uri = 'https://dropday.io/api/v1/';
 
     /**
+     * @var string API key
+     */
+    protected $apiKey = null;
+
+    /**
+     * @var string Account ID
+     */
+    protected $accountId = null;
+
+    /**
      * Dropday constructor.
      */
     public function __construct()
@@ -96,6 +106,50 @@ class Dropday extends Module
     public function getApiUrl($type = '')
     {
         return $type ? trim($this->api_uri, '/') . '/' . $type : trim($this->api_uri, '/');
+    }
+
+    /**
+     * Get API Key (in-memory override or configuration)
+     * 
+     * @return string
+     */
+    protected function getApiKey()
+    {
+        return $this->apiKey !== null 
+            ? $this->apiKey 
+            : Configuration::get('DROPDAY_ACCOUNT_APIKEY');
+    }
+
+    /**
+     * Get Account ID (in-memory override or configuration)
+     * 
+     * @return string
+     */
+    protected function getAccountId()
+    {
+        return $this->accountId !== null 
+            ? $this->accountId 
+            : Configuration::get('DROPDAY_ACCOUNT_ID');
+    }
+
+    /**
+     * Set API Key (in-memory, does not persist to database)
+     * 
+     * @param string $apiKey
+     */
+    protected function setApiKey($apiKey)
+    {
+        $this->apiKey = $apiKey;
+    }
+
+    /**
+     * Set Account ID (in-memory, does not persist to database)
+     * 
+     * @param string $accountId
+     */
+    protected function setAccountId($accountId)
+    {
+        $this->accountId = $accountId;
     }
 
     /**
@@ -306,8 +360,8 @@ class Dropday extends Module
         $headers = array(
             'Content-Type: application/json',
             'Accept: application/json',
-            'Api-Key: '.Configuration::get('DROPDAY_ACCOUNT_APIKEY'),
-            'Account-Id: '.Configuration::get('DROPDAY_ACCOUNT_ID')
+            'Api-Key: ' . $this->getApiKey(),
+            'Account-Id: ' . $this->getAccountId()
         );
 
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
