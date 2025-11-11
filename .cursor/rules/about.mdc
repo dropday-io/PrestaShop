@@ -16,3 +16,7 @@ Interact with the application that Dropday module runs in when developing using 
 ```bash
 docker compose exec {command}
 ```
+
+## CI/CD
+
+Do not bump the version of this module! That is done manually once a release is desired by the team.
