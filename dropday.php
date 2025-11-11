@@ -421,11 +421,14 @@ class Dropday extends Module
         $shop = new Shop((int) $order->id_shop);
         $customer = new Customer((int) $order->id_customer);
         $address = new Address((int) $order->id_address_delivery);
+        $shippingInfo = $this->getShippingInfo($order, $cart);
+
         $orderData = [
             'external_id' => $order->reference,
             'source' => $shop->name,
             'total' => (float) $order->getOrdersTotalPaid(),
             'shipping_cost' => (float) $shipping_cost,
+            'shipping' => $shippingInfo,
             'email' => $customer->email,
             'shipping_address' => [
                 'first_name' => $address->firstname,
@@ -558,6 +561,57 @@ class Dropday extends Module
         }
 
         return $orderData;
+    }
+
+    /**
+     * Get shipping information for Dropday API
+     * 
+     * @param Order $order
+     * @param Cart $cart
+     * @return array
+     */
+    private function getShippingInfo(Order $order, Cart $cart)
+    {
+        $shippingInfo = [
+            'name' => '',
+            'description' => '',
+            'cost' => (float) $cart->getTotalShippingCost(null, true, null),
+            'note' => '',
+            'delivery_date' => ''
+        ];
+
+        if ($order->id_carrier > 0) {
+            $carrier = new Carrier((int) $order->id_carrier);
+            if (Validate::isLoadedObject($carrier)) {
+                $shippingInfo['name'] = $carrier->name;
+                
+                if (!empty($carrier->delay) && is_array($carrier->delay)) {
+                    $currentLangId = $this->context->language->id;
+                    if (isset($carrier->delay[$currentLangId])) {
+                        $shippingInfo['description'] = $carrier->delay[$currentLangId];
+                    } else {
+                        $shippingInfo['description'] = reset($carrier->delay);
+                    }
+                } elseif (!empty($carrier->delay)) {
+                    $shippingInfo['description'] = $carrier->delay;
+                }
+            }
+        }
+        
+        $orderMessages = Message::getMessagesByOrderId($order->id, false);
+        if (!empty($orderMessages)) {
+            $notes = [];
+            foreach ($orderMessages as $message) {
+                if (!empty($message['message'])) {
+                    $notes[] = $message['message'];
+                }
+            }
+            if (!empty($notes)) {
+                $shippingInfo['note'] = implode('; ', $notes);
+            }
+        }
+
+        return $shippingInfo;
     }
 
     /**
