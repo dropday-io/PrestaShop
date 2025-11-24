@@ -55,7 +55,7 @@ class Dropday extends Module
         $this->version = '1.6.0';
         $this->author = 'Dropday support@dropday.nl';
         $this->need_instance = 0;
-        $this->module_key = '11652b14d72adae8e5c3d8129167bde7';
+        $this->module_key = '103f6d164a3687e35039203258788760';
 
         $this->bootstrap = true;
 
