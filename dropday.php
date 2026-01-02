@@ -409,8 +409,11 @@ class Dropday extends Module
             return $status->paid;
         }
         
+        // Convert all values to integers for consistent comparison
+        $configuredStatuses = array_map('intval', $configuredStatuses);
+        
         // Check if current status is in configured statuses
-        return in_array($status->id, $configuredStatuses);
+        return in_array((int) $status->id, $configuredStatuses, true);
     }
 
     public function getOrderData(Order $order)
