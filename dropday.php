@@ -511,8 +511,7 @@ class Dropday extends Module
                         'reference' => (string) $this->getProductReference($product),
                         'quantity' => (int) $productCustomization['quantity'],
                         'price' => (float) $product['product_price'],
-                        'purchase_price' => isset($product['original_wholesale_price']) && $product['original_wholesale_price'] > 0 ? 
-                            (float) $product['original_wholesale_price'] : (float) $product['wholesale_price'],
+                        'purchase_price' => (float) ($product['original_wholesale_price'] ?? $product['purchase_supplier_price'] ?? 0),
                         'image_url' => $image_url,
                         'brand' => (string) Manufacturer::getNameById((int) $product['id_manufacturer']),
                         'category' => (string) $cat->name,
@@ -537,8 +536,7 @@ class Dropday extends Module
                     'reference' => (string) $this->getProductReference($product),
                     'quantity' => $quantity,
                     'price' => (float) $product['product_price'],
-                    'purchase_price' => isset($product['original_wholesale_price']) && $product['original_wholesale_price'] > 0 ? 
-                        (float) $product['original_wholesale_price'] : (float) $product['wholesale_price'],
+                    'purchase_price' => (float) ($product['original_wholesale_price'] ?? $product['purchase_supplier_price'] ?? 0),
                     'image_url' => $image_url,
                     'brand' => (string) Manufacturer::getNameById((int) $product['id_manufacturer']),
                     'category' => (string) $cat->name,
@@ -721,4 +719,5 @@ class Dropday extends Module
         
         return $return;
     }
+
 }
