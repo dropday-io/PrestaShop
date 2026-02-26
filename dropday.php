@@ -52,7 +52,7 @@ class Dropday extends Module
     {
         $this->name = 'dropday';
         $this->tab = 'shipping_logistics';
-        $this->version = '1.6.2';
+        $this->version = '1.6.3';
         $this->author = 'Dropday support@dropday.nl';
         $this->need_instance = 0;
         $this->module_key = '103f6d164a3687e35039203258788760';
