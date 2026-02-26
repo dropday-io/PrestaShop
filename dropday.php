@@ -456,6 +456,7 @@ class Dropday extends Module
         }
         
         $products = $order->getProducts();
+        $customizationsByKey = $this->getCartCustomizations($cart, $order->id_lang);
 
         foreach ($products as $product) {
             
@@ -482,83 +483,34 @@ class Dropday extends Module
                 ? $this->context->link->getImageLink($link_rewrite, $product['image']->id, $this->imageTypeGetFormattedName('large'))
                 : null;
 
-            if (isset($product['id_customization']) && $product['id_customization'] > 0
-                && ($productCustomizations = $cart->getProductCustomization($product['product_id']))) {
-                $custom = [];
+            $product_data = [
+                'external_id' => (int) $product['product_id'],
+                'name' => (string) $product['product_name'],
+                'reference' => (string) $this->getProductReference($product),
+                'quantity' => (int) $product['product_quantity'],
+                'price' => (float) $product['product_price'],
+                'purchase_price' => isset($product['original_wholesale_price']) && $product['original_wholesale_price'] > 0 ? 
+                    (float) $product['original_wholesale_price'] : (float) $product['wholesale_price'],
+                'image_url' => $image_url,
+                'brand' => (string) Manufacturer::getNameById((int) $product['id_manufacturer']),
+                'category' => (string) $cat->name,
+                'supplier' => (string) Supplier::getNameById((int) $product['id_supplier']),
+            ];
 
-                $count = 1;
-                foreach ($productCustomizations as $productCustomization) {
-                    if ((int) $productCustomization['id_customization'] !== (int) $product['id_customization']) {
-                        continue;
-                    }
-
-                    $productCustomizationName = $this->getProductCustomizationFieldName($productCustomization);
-                    $productCustomizationValue = $this->getProductCustomizationFieldValue($productCustomization);
-
-                    if ($productCustomizationValue === false) {
-                        continue;
-                    }
-
-                    if (!$productCustomizationName) {
-                        $productCustomizationName = 'value_' . (string) $count;
-                    }
-
-                    $custom[$productCustomizationName] = $productCustomizationValue;
-                    $count++;
-                }
-
-                if (!empty($custom)) {
-                    $product_data = [
-                        'external_id' => (int) $product['product_id'],
-                        'name' => (string) $product['product_name'],
-                        'reference' => (string) $this->getProductReference($product),
-                        'quantity' => (int) $product['product_quantity'],
-                        'price' => (float) $product['product_price'],
-                        'purchase_price' => isset($product['original_wholesale_price']) && $product['original_wholesale_price'] > 0 ? 
-                            (float) $product['original_wholesale_price'] : (float) $product['wholesale_price'],
-                        'image_url' => $image_url,
-                        'brand' => (string) Manufacturer::getNameById((int) $product['id_manufacturer']),
-                        'category' => (string) $cat->name,
-                        'supplier' => (string) Supplier::getNameById((int) $product['id_supplier']),
-                        'custom' => $custom
-                    ];
-
-                    if ($stockQuantity !== false) {
-                        $product_data['stock_quantity'] = $stockQuantity;
-                    }
-
-                    if ($ean13 !== false) {
-                        $product_data['ean13'] = $ean13;
-                    }
-
-                    $orderData['products'][$product['id_order_detail']] = $product_data;
-                }
-            } else {
-                $product_data = [
-                    'external_id' => (int) $product['product_id'],
-                    'name' => (string) $product['product_name'],
-                    'reference' => (string) $this->getProductReference($product),
-                    'quantity' => $quantity,
-                    'price' => (float) $product['product_price'],
-                    'purchase_price' => isset($product['original_wholesale_price']) && $product['original_wholesale_price'] > 0 ? 
-                        (float) $product['original_wholesale_price'] : (float) $product['wholesale_price'],
-                    'image_url' => $image_url,
-                    'brand' => (string) Manufacturer::getNameById((int) $product['id_manufacturer']),
-                    'category' => (string) $cat->name,
-                    'supplier' => (string) Supplier::getNameById((int) $product['id_supplier']),
-                ];
-
-                if ($stockQuantity !== false) {
-                    $product_data['stock_quantity'] = $stockQuantity;
-                }
-
-                if ($ean13 !== false) {
-                    $product_data['ean13'] = $ean13;
-                }
-
-                $orderData['products'][$product['id_order_detail']] = $product_data;
+            if ($stockQuantity !== false) {
+                $product_data['stock_quantity'] = $stockQuantity;
             }
 
+            if ($ean13 !== false) {
+                $product_data['ean13'] = $ean13;
+            }
+
+            $idCustomization = isset($product['id_customization']) ? (int) $product['id_customization'] : 0;
+            if ($idCustomization > 0 && isset($customizationsByKey[$idCustomization])) {
+                $product_data['custom'] = $customizationsByKey[$idCustomization];
+            }
+
+            $orderData['products'][$product['id_order_detail']] = $product_data;
         }
 
         $orderData['products'] = array_values($orderData['products']);
@@ -679,46 +631,63 @@ class Dropday extends Module
     }
 
     /**
-     * Makes customization field name
+     * Fetches all customization field names and values for a cart in a single query,
+     * grouped by id_customization.
      * 
-     * @param $productCustomization
-     * @return false|string
+     * @param Cart $cart
+     * @param int $id_lang
+     * @return array<int, array<string, string>> Keyed by id_customization
      */
-    private function getProductCustomizationFieldName($productCustomization)
+    private function getCartCustomizations(Cart $cart, $id_lang)
     {
-        $sql = sprintf('SELECT `name` FROM `%scustomization_field_lang` WHERE `id_customization_field`=%s AND `id_lang`=%s AND `id_shop`=%s',
+        $sql = sprintf(
+            'SELECT cd.id_customization, cd.type, cd.`index`, cd.value, cfl.name AS field_name
+            FROM `%scustomized_data` cd
+            INNER JOIN `%scustomization` c ON c.id_customization = cd.id_customization
+            LEFT JOIN `%scustomization_field_lang` cfl 
+                ON cfl.id_customization_field = cd.`index` 
+                AND cfl.id_lang = %d 
+                AND cfl.id_shop = %d
+            WHERE c.id_cart = %d',
             _DB_PREFIX_,
-            (int) $productCustomization['index'], 
-            $this->context->language->id, 
-            $this->context->shop->id
+            _DB_PREFIX_,
+            _DB_PREFIX_,
+            (int) $id_lang,
+            (int) $this->context->shop->id,
+            (int) $cart->id
         );
-        
-        return DB::getInstance()->getValue($sql) ?: false;
-    }
 
-    /**
-     * Makes customization field value
-     * 
-     * @param $productCustomization
-     * @return false|string
-     */
-    private function getProductCustomizationFieldValue($productCustomization)
-    {
-        // compare as (strings) to avoid complications with '0'
-        switch ((string)$productCustomization['type']) {
-            case (string)Product::CUSTOMIZE_TEXTFIELD:
-                $return = $productCustomization['value'];
-                break;
-            case (string)Product::CUSTOMIZE_FILE:
-                $return = sprintf("%s/upload/%s",
-                    rtrim($this->context->link->getPageLink('index'), '/'),
-                    $productCustomization['value']
-                );
-                break;
-            default:
-                $return = false;
+        $rows = DB::getInstance()->executeS($sql);
+        if (!$rows) {
+            return [];
         }
-        
-        return $return;
+
+        $uploadBaseUrl = rtrim($this->context->link->getPageLink('index'), '/') . '/upload/';
+        $result = [];
+        $counters = [];
+
+        foreach ($rows as $row) {
+            $idCustomization = (int) $row['id_customization'];
+            $type = (string) $row['type'];
+
+            if ($type === (string) Product::CUSTOMIZE_TEXTFIELD) {
+                $value = $row['value'];
+            } elseif ($type === (string) Product::CUSTOMIZE_FILE) {
+                $value = $uploadBaseUrl . $row['value'];
+            } else {
+                continue;
+            }
+
+            if (!isset($counters[$idCustomization])) {
+                $counters[$idCustomization] = 1;
+            }
+
+            $name = $row['field_name'] ?: 'value_' . $counters[$idCustomization];
+            $counters[$idCustomization]++;
+
+            $result[$idCustomization][$name] = $value;
+        }
+
+        return $result;
     }
 }
