@@ -482,13 +482,17 @@ class Dropday extends Module
                 ? $this->context->link->getImageLink($link_rewrite, $product['image']->id, $this->imageTypeGetFormattedName('large'))
                 : null;
 
-            if ($productCustomizations = $cart->getProductCustomization($product['product_id'])) {
+            if (isset($product['id_customization']) && $product['id_customization'] > 0
+                && ($productCustomizations = $cart->getProductCustomization($product['product_id']))) {
                 $custom = [];
 
                 $count = 1;
-                foreach ($productCustomizations as $key => $productCustomization) {
-                    $productCustomizationName = $this->getProductCustomizationFieldName($productCustomization);
+                foreach ($productCustomizations as $productCustomization) {
+                    if ((int) $productCustomization['id_customization'] !== (int) $product['id_customization']) {
+                        continue;
+                    }
 
+                    $productCustomizationName = $this->getProductCustomizationFieldName($productCustomization);
                     $productCustomizationValue = $this->getProductCustomizationFieldValue($productCustomization);
 
                     if ($productCustomizationValue === false) {
@@ -499,17 +503,16 @@ class Dropday extends Module
                         $productCustomizationName = 'value_' . (string) $count;
                     }
 
-                    $custom[$productCustomization['id_customization']][$productCustomizationName] = $productCustomizationValue;
-
+                    $custom[$productCustomizationName] = $productCustomizationValue;
                     $count++;
                 }
 
-                foreach ($custom as $id_customization => $customization) {
+                if (!empty($custom)) {
                     $product_data = [
                         'external_id' => (int) $product['product_id'],
                         'name' => (string) $product['product_name'],
                         'reference' => (string) $this->getProductReference($product),
-                        'quantity' => (int) $productCustomization['quantity'],
+                        'quantity' => (int) $product['product_quantity'],
                         'price' => (float) $product['product_price'],
                         'purchase_price' => isset($product['original_wholesale_price']) && $product['original_wholesale_price'] > 0 ? 
                             (float) $product['original_wholesale_price'] : (float) $product['wholesale_price'],
@@ -517,7 +520,7 @@ class Dropday extends Module
                         'brand' => (string) Manufacturer::getNameById((int) $product['id_manufacturer']),
                         'category' => (string) $cat->name,
                         'supplier' => (string) Supplier::getNameById((int) $product['id_supplier']),
-                        'custom' => $customization
+                        'custom' => $custom
                     ];
 
                     if ($stockQuantity !== false) {
@@ -528,7 +531,7 @@ class Dropday extends Module
                         $product_data['ean13'] = $ean13;
                     }
 
-                    $orderData['products'][$product['id_order_detail'] . '_' . $id_customization] = $product_data;
+                    $orderData['products'][$product['id_order_detail']] = $product_data;
                 }
             } else {
                 $product_data = [
@@ -556,12 +559,9 @@ class Dropday extends Module
                 $orderData['products'][$product['id_order_detail']] = $product_data;
             }
 
-            $orderData['products'] = array_values($orderData['products']);
-                        
-            if (Tools::strlen($product['ean13']) >= 13) {
-                $product_data['ean13'] = $product['ean13'];
-            }
         }
+
+        $orderData['products'] = array_values($orderData['products']);
 
         return $orderData;
     }
