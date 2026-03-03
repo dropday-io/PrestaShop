@@ -483,6 +483,8 @@ class Dropday extends Module
                 ? $this->context->link->getImageLink($link_rewrite, $product['image']->id, $this->imageTypeGetFormattedName('large'))
                 : null;
 
+            $productObj = new Product((int) $product['product_id']);
+
             $product_data = [
                 'external_id' => (int) $product['product_id'],
                 'name' => (string) $product['product_name'],
@@ -495,6 +497,10 @@ class Dropday extends Module
                 'brand' => (string) Manufacturer::getNameById((int) $product['id_manufacturer']),
                 'category' => (string) $cat->name,
                 'supplier' => (string) Supplier::getNameById((int) $product['id_supplier']),
+                'height' => (float) $productObj->height,
+                'width' => (float) $productObj->width,
+                'length' => (float) $productObj->depth,
+                'weight' => (float) $product['product_weight'],
             ];
 
             if ($stockQuantity !== false) {
