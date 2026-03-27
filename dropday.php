@@ -485,6 +485,25 @@ class Dropday extends Module
 
             $productObj = new Product((int) $product['product_id']);
 
+            $height = (float) $productObj->height;
+            $width = (float) $productObj->width;
+            $depth = (float) $productObj->depth;
+
+            if ((int) $product['product_attribute_id'] > 0) {
+                $combinationDimensions = $this->getCombinationDimensions((int) $product['product_attribute_id']);
+                if ($combinationDimensions) {
+                    if ($combinationDimensions['height'] > 0) {
+                        $height = $combinationDimensions['height'];
+                    }
+                    if ($combinationDimensions['width'] > 0) {
+                        $width = $combinationDimensions['width'];
+                    }
+                    if ($combinationDimensions['depth'] > 0) {
+                        $depth = $combinationDimensions['depth'];
+                    }
+                }
+            }
+
             $product_data = [
                 'external_id' => (int) $product['product_id'],
                 'name' => (string) $product['product_name'],
@@ -497,9 +516,9 @@ class Dropday extends Module
                 'brand' => (string) Manufacturer::getNameById((int) $product['id_manufacturer']),
                 'category' => (string) $cat->name,
                 'supplier' => (string) Supplier::getNameById((int) $product['id_supplier']),
-                'height' => (float) $productObj->height,
-                'width' => (float) $productObj->width,
-                'length' => (float) $productObj->depth,
+                'height' => $height,
+                'width' => $width,
+                'length' => $depth,
                 'weight' => (float) $product['product_weight'],
             ];
 
@@ -614,6 +633,29 @@ class Dropday extends Module
         }
 
         return ImageType::getFormattedName('large');
+    }
+
+    /**
+     * @param int $idProductAttribute
+     * @return array{height: float, width: float, depth: float}|false
+     */
+    private function getCombinationDimensions($idProductAttribute)
+    {
+        $sql = new DbQuery();
+        $sql->select('`height`, `width`, `depth`');
+        $sql->from('product_attribute');
+        $sql->where('`id_product_attribute` = ' . (int) $idProductAttribute);
+
+        $row = Db::getInstance()->getRow($sql);
+        if (!$row) {
+            return false;
+        }
+
+        return [
+            'height' => (float) $row['height'],
+            'width' => (float) $row['width'],
+            'depth' => (float) $row['depth'],
+        ];
     }
 
     /**
