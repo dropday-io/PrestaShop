@@ -4,7 +4,7 @@ on:
   pull_request:
 
 jobs:
-  dropday-order-hook:
+  smoke-send-order-to-dropday:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:

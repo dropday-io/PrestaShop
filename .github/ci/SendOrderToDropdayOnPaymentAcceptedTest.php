@@ -35,10 +35,16 @@ class SendOrderToDropdayOnPaymentAcceptedTest
 
         require_once '/var/www/html/config/config.inc.php';
 
-        if (class_exists('AppKernel')) {
-            global $kernel;
-            if (!$kernel instanceof AppKernel) {
+        // PS 9+: AppKernel is abstract; use AdminKernel. PS 8: AppKernel is concrete.
+        global $kernel;
+        if (!is_object($kernel)) {
+            if (class_exists('AdminKernel')) {
+                $kernel = new AdminKernel('dev', true);
+            } elseif (class_exists('AppKernel')) {
                 $kernel = new AppKernel('dev', true);
+            }
+
+            if (isset($kernel) && is_object($kernel)) {
                 $kernel->boot();
             }
         }
