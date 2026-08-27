@@ -62,8 +62,9 @@ class SendOrderToDropdayOnPaymentAcceptedTest
     private function installDropdayWithEmptySettings()
     {
         $module = Module::getInstanceByName('dropday');
-        if (!Validate::isLoadedObject($module)) {
-            $this->fail('Dropday module not found');
+        // Uninstalled modules have no id — do not use Validate::isLoadedObject() here.
+        if (!$module instanceof Module) {
+            $this->fail('Dropday module not found on disk at ' . _PS_MODULE_DIR_ . 'dropday');
         }
         if (!Module::isInstalled('dropday') && !$module->install()) {
             $this->fail('Failed to install dropday');
