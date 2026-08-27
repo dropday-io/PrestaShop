@@ -7,6 +7,17 @@ jobs:
   dropday-order-hook:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - prestashop: "8"
+            tag: "8.1.2-8.0-apache"
+          - prestashop: "9"
+            tag: "9.1.5-apache"
+    name: PrestaShop ${{ matrix.prestashop }}
+    env:
+      TAG: ${{ matrix.tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -16,7 +27,7 @@ jobs:
 
       - name: Wait for PrestaShop
         run: |
-          echo "Waiting for PrestaShop to become ready..."
+          echo "Waiting for PrestaShop ${{ matrix.prestashop }} (${{ matrix.tag }}) to become ready..."
           for i in $(seq 1 90); do
             if curl -fsS -o /dev/null http://localhost/; then
               echo "PrestaShop is up (attempt $i)"
