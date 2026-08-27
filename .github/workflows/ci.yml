@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  pull_request:
+
+jobs:
+  smoke-send-order-to-dropday:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - prestashop: "1.7"
+            tag: "1.7.8-apache"
+          - prestashop: "8"
+            tag: "8.1.2-8.0-apache"
+          - prestashop: "9"
+            tag: "9.1.5-apache"
+    name: PrestaShop ${{ matrix.prestashop }}
+    env:
+      TAG: ${{ matrix.tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Start PrestaShop
+        run: docker compose up -d
+
+      - name: Wait for PrestaShop
+        run: |
+          echo "Waiting for PrestaShop ${{ matrix.prestashop }} (${{ matrix.tag }}) to become ready..."
+          for i in $(seq 1 90); do
+            if curl -fsS -o /dev/null http://localhost/; then
+              echo "PrestaShop is up (attempt $i)"
+              exit 0
+            else
+              echo "PrestaShop is not up yet (attempt $i)"
+            fi
+            sleep 2
+          done
+          echo "PrestaShop did not become ready in time"
+          docker compose logs
+          exit 1
+
+      - name: Run Dropday order hook test
+        run: docker compose exec -T apache php /var/www/html/modules/dropday/.github/ci/SendOrderToDropdayOnPaymentAcceptedTest.php
+
+      - name: Dump logs on failure
+        if: failure()
+        run: docker compose logs

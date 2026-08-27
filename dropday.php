@@ -28,6 +28,8 @@ if (!defined('_PS_VERSION_')) {
     exit;
 }
 
+require_once dirname(__FILE__) . '/classes/Http.php';
+
 class Dropday extends Module
 {
     /**
@@ -344,35 +346,20 @@ class Dropday extends Module
 
         $order_date = $this->getOrderData($order);
 
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $this->getApiUrl('orders'));
-        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
-        curl_setopt($ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_POST, 1);
-        curl_setopt($ch, CURLOPT_PORT, 443);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($order_date));
-        if (!Configuration::get('PS_SSL_ENABLED') || 1) {
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-        }
-
-        $headers = array(
+        $headers = [
             'Content-Type: application/json',
             'Accept: application/json',
             'Api-Key: ' . $this->getApiKey(),
-            'Account-Id: ' . $this->getAccountId()
-        );
+            'Account-Id: ' . $this->getAccountId(),
+        ];
 
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        $response = DropdayHttp::post($this->getApiUrl('orders'), $order_date, $headers);
 
-        $result = curl_exec($ch);
-
-        if (curl_errno($ch)) {
-            Logger::addLog('[dropday] error: ' . curl_error($ch), 3, null, 'Order', (int) $id_order, true);
+        if (!empty($response['error'])) {
+            Logger::addLog('[dropday] error: ' . $response['error'], 3, null, 'Order', (int) $id_order, true);
         } else {
-            $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            $result = json_decode($result, true);
+            $httpcode = (int) $response['status'];
+            $result = json_decode($response['body'], true);
             if ($httpcode == 200) {
                 Logger::addLog('[dropday] API request sent successfully :#'.$result['reference'], 1, null, 'Order', (int) $id_order, true);
             } elseif ($httpcode == 422) {
@@ -382,8 +369,6 @@ class Dropday extends Module
             }
             error_log(json_encode($result));
         }
-
-        curl_close($ch);
     }
 
     /**
@@ -477,13 +462,11 @@ class Dropday extends Module
 
             $cat = new Category((int) $product['id_category_default'], (int) $order->id_lang);
 
-            $link_rewrite = $this->getProductLinkRewrite((int) $product['product_id'], (int) $order->id_lang);
+            $productObj = new Product((int) $product['product_id'], false, (int) $order->id_lang);
 
-            $image_url = isset($product['image'])
-                ? $this->context->link->getImageLink($link_rewrite, $product['image']->id, $this->imageTypeGetFormattedName('large'))
-                : null;
-
-            $productObj = new Product((int) $product['product_id']);
+            if (isset($product['image']) && isset($productObj->link_rewrite)) {
+                $image_url = $this->context->link->getImageLink($productObj->link_rewrite, $product['image']->id, $this->imageTypeGetFormattedName('large'));
+            }
 
             $height = (float) $productObj->height;
             $width = (float) $productObj->width;
@@ -595,24 +578,6 @@ class Dropday extends Module
     }
 
     /**
-     * @param $id_product
-     * @param $id_lang
-     * @return mixed|string
-     */
-    private function getProductLinkRewrite($id_product, $id_lang)
-    {
-        $lr = '';
-        $product_langs = Product::getUrlRewriteInformations($id_product);
-        foreach ($product_langs as $value) {
-            $lr = $value['link_rewrite'];
-            if ($value['id_lang'] == $id_lang) {
-                break;
-            }
-        }
-        return $lr;
-    }
-
-    /**
      * @param $params
      */
     public function hookActionOrderStatusUpdate($params)
@@ -636,18 +601,21 @@ class Dropday extends Module
     }
 
     /**
+     * Combination dimensions are not part of core PrestaShop; some shops add
+     * height/width/depth columns to product_attribute via a third-party module.
+     *
      * @param int $idProductAttribute
      * @return array{height: float, width: float, depth: float}|false
      */
     private function getCombinationDimensions($idProductAttribute)
     {
         $sql = new DbQuery();
-        $sql->select('`height`, `width`, `depth`');
+        $sql->select('*');
         $sql->from('product_attribute');
         $sql->where('`id_product_attribute` = ' . (int) $idProductAttribute);
 
         $row = Db::getInstance()->getRow($sql);
-        if (!$row) {
+        if (!$row || !isset($row['height'], $row['width'], $row['depth'])) {
             return false;
         }
 
