@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  pull_request:
+
+jobs:
+  dropday-order-hook:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Start PrestaShop
+        run: docker compose up -d
+
+      - name: Wait for PrestaShop
+        run: |
+          echo "Waiting for PrestaShop to become ready..."
+          for i in $(seq 1 90); do
+            if curl -fsS -o /dev/null http://localhost/; then
+              echo "PrestaShop is up (attempt $i)"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "PrestaShop did not become ready in time"
+          docker compose logs
+          exit 1
+
+      - name: Run Dropday order hook test
+        run: docker compose exec -T apache php /var/www/html/modules/dropday/.github/ci/SendOrderToDropdayOnPaymentAcceptedTest.php
+
+      - name: Dump logs on failure
+        if: failure()
+        run: docker compose logs
