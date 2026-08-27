@@ -21,6 +21,8 @@ jobs:
             if curl -fsS -o /dev/null http://localhost/; then
               echo "PrestaShop is up (attempt $i)"
               exit 0
+            else
+              echo "PrestaShop is not up yet (attempt $i)"
             fi
             sleep 2
           done
