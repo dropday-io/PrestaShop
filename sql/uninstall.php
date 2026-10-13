@@ -31,6 +31,8 @@
  */
 $sql = array();
 
+$sql[] = 'DROP TABLE IF EXISTS `' . $this->queueTable() . '`';
+
 foreach ($sql as $query) {
     if (Db::getInstance()->execute($query) == false) {
         return false;

@@ -32,6 +32,15 @@ require_once dirname(__FILE__) . '/classes/Http.php';
 
 class Dropday extends Module
 {
+    const STATUS_PENDING = 'pending';
+    const STATUS_SENDING = 'sending';
+    const STATUS_SENT = 'sent';
+    const STATUS_FAILED = 'failed';
+    const OUTCOME_RETRY = 'retry';
+
+    const QUEUE_BATCH_SIZE = 5;
+    const LOCK_MINUTES = 2;
+
     /**
      * @var string 
      */
@@ -54,7 +63,7 @@ class Dropday extends Module
     {
         $this->name = 'dropday';
         $this->tab = 'shipping_logistics';
-        $this->version = '1.7.2';
+        $this->version = '1.8.0';
         $this->author = 'Dropday support@dropday.nl';
         $this->need_instance = 0;
         $this->module_key = '103f6d164a3687e35039203258788760';
@@ -76,8 +85,14 @@ class Dropday extends Module
     {
         Configuration::updateValue('DROPDAY_LIVE_MODE', false);
 
+        if (!$this->installDb()) {
+            return false;
+        }
+
         return parent::install() &&
-            $this->registerHook('actionOrderStatusUpdate');
+            $this->registerHook('actionOrderStatusUpdate') &&
+            $this->registerHook('displayAdminOrder') &&
+            $this->registerHook('displayAdminOrderMain');
     }
 
     /**
@@ -85,7 +100,53 @@ class Dropday extends Module
      */
     public function uninstall()
     {
+        $this->uninstallDb();
+
         return parent::uninstall();
+    }
+
+    /**
+     * @return bool
+     */
+    protected function installDb()
+    {
+        return (bool) include dirname(__FILE__) . '/sql/install.php';
+    }
+
+    /**
+     * @return bool
+     */
+    protected function uninstallDb()
+    {
+        return (bool) include dirname(__FILE__) . '/sql/uninstall.php';
+    }
+
+    /**
+     * @return string
+     */
+    public function queueTable()
+    {
+        return _DB_PREFIX_ . 'dropday_order';
+    }
+
+    /**
+     * @return string
+     */
+    public function queueTableSql()
+    {
+        return 'CREATE TABLE IF NOT EXISTS `' . $this->queueTable() . '` (
+            `id_order` INT UNSIGNED NOT NULL,
+            `status` VARCHAR(16) NOT NULL DEFAULT \'' . self::STATUS_PENDING . '\',
+            `attempts` SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+            `locked_until` DATETIME NULL,
+            `last_http_code` SMALLINT NULL,
+            `last_error` TEXT NULL,
+            `dropday_reference` VARCHAR(64) NULL,
+            `date_add` DATETIME NOT NULL,
+            `date_upd` DATETIME NOT NULL,
+            PRIMARY KEY (`id_order`),
+            KEY `idx_status_date` (`status`, `date_add`)
+        ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8';
     }
 
     /**
@@ -327,21 +388,194 @@ class Dropday extends Module
     }
 
     /**
-     * @param $id_order
-     * @param OrderState $status
-     * @return false
+     * Adds (or refreshes) a queue row for the order. Never overwrites an order
+     * that was already confirmed as sent.
+     *
+     * @param int $id_order
      */
-    public function handleOrder($id_order, OrderState $status)
+    protected function addToQueue($id_order)
     {
-        if (!$id_order || !Validate::isLoadedObject($status) || !$this->shouldHandleOrderStatus($status)) {
+        $id_order = (int) $id_order;
+
+        Db::getInstance()->execute(
+            'INSERT INTO `' . $this->queueTable() . '` (`id_order`, `status`, `attempts`, `date_add`, `date_upd`)
+             VALUES (' . $id_order . ', \'' . self::STATUS_PENDING . '\', 0, NOW(), NOW())
+             ON DUPLICATE KEY UPDATE
+                `status` = IF(`status` IN (\'' . self::STATUS_SENT . '\', \'' . self::STATUS_FAILED . '\'), `status`, \'' . self::STATUS_PENDING . '\'),
+                `date_upd` = NOW()'
+        );
+    }
+
+    /**
+     * @param int $id_order
+     * @return bool
+     */
+    protected function isFinalized($id_order)
+    {
+        $status = Db::getInstance()->getValue(
+            'SELECT `status` FROM `' . $this->queueTable() . '` WHERE `id_order` = ' . (int) $id_order
+        );
+
+        return $status === self::STATUS_SENT || $status === self::STATUS_FAILED;
+    }
+
+    /**
+     * @param int $id_order
+     * @return array|false
+     */
+    public function getQueueStatus($id_order)
+    {
+        return Db::getInstance()->getRow(
+            'SELECT * FROM `' . $this->queueTable() . '` WHERE `id_order` = ' . (int) $id_order
+        );
+    }
+
+    /**
+     * Returns the given order id first, followed by the oldest pending orders
+     * (excluding the given order id), up to $limit extra ids.
+     *
+     * @param int $id_order
+     * @param int $limit
+     * @return int[]
+     */
+    protected function getPendingOrderIds($id_order, $limit)
+    {
+        $ids = [(int) $id_order];
+
+        $rows = Db::getInstance()->executeS(
+            'SELECT `id_order` FROM `' . $this->queueTable() . '`
+             WHERE `status` = \'' . self::STATUS_PENDING . '\'
+                AND `id_order` != ' . (int) $id_order . '
+             ORDER BY `date_add` ASC
+             LIMIT ' . (int) $limit
+        );
+
+        foreach ($rows as $row) {
+            $ids[] = (int) $row['id_order'];
+        }
+
+        return $ids;
+    }
+
+    /**
+     * Atomically claims the row for sending, so two parallel requests can't
+     * send the same order at once. Also reclaims rows abandoned mid-send.
+     *
+     * @param int $id_order
+     * @return bool
+     */
+    protected function claimOrder($id_order)
+    {
+        Db::getInstance()->execute(
+            'UPDATE `' . $this->queueTable() . '`
+             SET `status` = \'' . self::STATUS_SENDING . '\',
+                 `locked_until` = DATE_ADD(NOW(), INTERVAL ' . self::LOCK_MINUTES . ' MINUTE),
+                 `attempts` = `attempts` + 1,
+                 `date_upd` = NOW()
+             WHERE `id_order` = ' . (int) $id_order . '
+                AND (`status` = \'' . self::STATUS_PENDING . '\'
+                    OR (`status` = \'' . self::STATUS_SENDING . '\' AND `locked_until` < NOW()))'
+        );
+
+        return (int) Db::getInstance()->Affected_Rows() === 1;
+    }
+
+    /**
+     * @param int $id_order
+     * @param string $status
+     * @param int|null $httpCode
+     * @param string|null $error
+     * @param string|null $reference
+     */
+    protected function updateQueueRow($id_order, $status, $httpCode = null, $error = null, $reference = null)
+    {
+        $sql = 'UPDATE `' . $this->queueTable() . '`
+             SET `status` = \'' . pSQL($status) . '\',
+                 `last_http_code` = ' . ($httpCode !== null ? (int) $httpCode : 'NULL') . ',
+                 `last_error` = ' . ($error !== null ? '\'' . pSQL(Tools::substr((string) $error, 0, 2000)) . '\'' : 'NULL') . ',
+                 `date_upd` = NOW()';
+
+        if ($reference !== null) {
+            $sql .= ', `dropday_reference` = \'' . pSQL((string) $reference) . '\'';
+        }
+
+        $sql .= ' WHERE `id_order` = ' . (int) $id_order;
+
+        Db::getInstance()->execute($sql);
+    }
+
+    /**
+     * Resets the queue row so the order is picked up and sent again,
+     * regardless of its previous status.
+     *
+     * @param int $id_order
+     */
+    protected function resetForResend($id_order)
+    {
+        $id_order = (int) $id_order;
+
+        Db::getInstance()->execute(
+            'INSERT INTO `' . $this->queueTable() . '` (`id_order`, `status`, `attempts`, `date_add`, `date_upd`)
+             VALUES (' . $id_order . ', \'' . self::STATUS_PENDING . '\', 0, NOW(), NOW())
+             ON DUPLICATE KEY UPDATE
+                `status` = \'' . self::STATUS_PENDING . '\',
+                `attempts` = 0,
+                `last_error` = NULL,
+                `last_http_code` = NULL,
+                `locked_until` = NULL,
+                `date_upd` = NOW()'
+        );
+    }
+
+    /**
+     * Classifies a Dropday API result into one of:
+     * - self::STATUS_SENT: the order is confirmed to exist at Dropday
+     * - self::OUTCOME_RETRY: transient failure, worth retrying later
+     * - self::STATUS_FAILED: permanent failure, won't be retried automatically
+     *
+     * @param string|null $curlError
+     * @param int|null $httpCode
+     * @return string
+     */
+    protected function classify($curlError, $httpCode)
+    {
+        if (!empty($curlError)) {
+            return self::OUTCOME_RETRY;
+        }
+
+        if ($httpCode === 200 || $httpCode === 409) {
+            return self::STATUS_SENT;
+        }
+
+        if ($httpCode === 408 || $httpCode === 429 || $httpCode >= 500) {
+            return self::OUTCOME_RETRY;
+        }
+
+        return self::STATUS_FAILED;
+    }
+
+    /**
+     * Claims, sends and classifies a single queued order. Updates the queue
+     * row and writes the same log messages as before.
+     *
+     * @param int $id_order
+     * @return string|false One of self::STATUS_SENT, self::OUTCOME_RETRY,
+     *                       self::STATUS_FAILED, or false if the order could
+     *                       not be claimed (already being processed elsewhere).
+     */
+    public function processOrder($id_order)
+    {
+        $id_order = (int) $id_order;
+
+        if (!$this->claimOrder($id_order)) {
             return false;
         }
 
-        $order = new Order((int) $id_order);
-        $old_os = $order->getCurrentOrderState();
+        $order = new Order($id_order);
 
         if (!Validate::isLoadedObject($order)) {
-            return false;
+            $this->updateQueueRow($id_order, self::STATUS_FAILED, null, 'Order not found');
+            return self::STATUS_FAILED;
         }
 
         $order_date = $this->getOrderData($order);
@@ -355,20 +589,45 @@ class Dropday extends Module
 
         $response = DropdayHttp::post($this->getApiUrl('orders'), $order_date, $headers);
 
-        if (!empty($response['error'])) {
-            Logger::addLog('[dropday] error: ' . $response['error'], 3, null, 'Order', (int) $id_order, true);
-        } else {
-            $httpcode = (int) $response['status'];
-            $result = json_decode($response['body'], true);
-            if ($httpcode == 200) {
-                Logger::addLog('[dropday] API request sent successfully :#'.$result['reference'], 1, null, 'Order', (int) $id_order, true);
-            } elseif ($httpcode == 422) {
-                Logger::addLog('[dropday] Error: ' . json_encode($result['errors']), 3, null, 'Order', (int) $id_order, true);
-            } else {
-                Logger::addLog('[dropday] Unknown error: ' . json_encode($result), 3, $httpcode, 'Order', (int) $id_order, true);
-            }
-            error_log(json_encode($result));
+        $curlError = $response['error'];
+        $httpCode = empty($curlError) ? (int) $response['status'] : null;
+        $result = empty($curlError) ? json_decode($response['body'], true) : null;
+
+        $outcome = $this->classify($curlError, $httpCode);
+
+        switch ($outcome) {
+            case self::STATUS_SENT:
+                $reference = is_array($result) && isset($result['reference']) ? $result['reference'] : null;
+                $this->updateQueueRow($id_order, self::STATUS_SENT, $httpCode, null, $reference);
+                Logger::addLog('[dropday] API request sent successfully :#' . $reference, 1, null, 'Order', $id_order, true);
+                break;
+
+            case self::OUTCOME_RETRY:
+                if (!empty($curlError)) {
+                    $this->updateQueueRow($id_order, self::STATUS_PENDING, null, $curlError);
+                    Logger::addLog('[dropday] error: ' . $curlError, 3, null, 'Order', $id_order, true);
+                } else {
+                    $message = json_encode($result);
+                    $this->updateQueueRow($id_order, self::STATUS_PENDING, $httpCode, $message);
+                    Logger::addLog('[dropday] Unknown error: ' . $message, 3, $httpCode, 'Order', $id_order, true);
+                }
+                break;
+
+            case self::STATUS_FAILED:
+            default:
+                if ($httpCode == 422) {
+                    $message = is_array($result) && isset($result['errors']) ? json_encode($result['errors']) : null;
+                    $this->updateQueueRow($id_order, self::STATUS_FAILED, $httpCode, $message);
+                    Logger::addLog('[dropday] Error: ' . $message, 3, null, 'Order', $id_order, true);
+                } else {
+                    $message = json_encode($result);
+                    $this->updateQueueRow($id_order, self::STATUS_FAILED, $httpCode, $message);
+                    Logger::addLog('[dropday] Unknown error: ' . $message, 3, $httpCode, 'Order', $id_order, true);
+                }
+                break;
         }
+
+        return $outcome;
     }
 
     /**
@@ -582,7 +841,133 @@ class Dropday extends Module
      */
     public function hookActionOrderStatusUpdate($params)
     {
-        $this->handleOrder((int) $params['id_order'], $params['newOrderStatus']);
+        $id_order = (int) $params['id_order'];
+        $status = $params['newOrderStatus'];
+
+        if (!$id_order || !Validate::isLoadedObject($status) || !$this->shouldHandleOrderStatus($status)) {
+            return;
+        }
+
+        if ($this->isFinalized($id_order)) {
+            return;
+        }
+
+        $this->addToQueue($id_order);
+
+        foreach ($this->getPendingOrderIds($id_order, self::QUEUE_BATCH_SIZE) as $queuedOrderId) {
+            if ($this->processOrder($queuedOrderId) === self::OUTCOME_RETRY) {
+                // Dropday looks unreachable right now; leave the rest pending
+                // instead of waiting out a timeout for each of them.
+                break;
+            }
+        }
+    }
+
+    /**
+     * @param array $params
+     * @return string
+     */
+    public function hookDisplayAdminOrder($params)
+    {
+        // On 1.7.7+ the order page also calls displayAdminOrderMain; render
+        // there instead to avoid showing the block twice on the same page.
+        if (version_compare(_PS_VERSION_, '1.7.7.0', '>=')) {
+            return '';
+        }
+
+        return $this->renderOrderStatusBlock((int) $params['id_order'], false);
+    }
+
+    /**
+     * @param array $params
+     * @return string
+     */
+    public function hookDisplayAdminOrderMain($params)
+    {
+        if (version_compare(_PS_VERSION_, '1.7.7.0', '<')) {
+            return '';
+        }
+
+        return $this->renderOrderStatusBlock((int) $params['id_order'], true);
+    }
+
+    /**
+     * @param int $id_order
+     * @param bool $newTheme Bootstrap 4 / material-icons theme (1.7.7+) vs
+     *                       the legacy Bootstrap 3 admin theme (1.6 - 1.7.6).
+     * @return string
+     */
+    protected function renderOrderStatusBlock($id_order, $newTheme)
+    {
+        if (Tools::isSubmit('dropday_resend')) {
+            $this->resetForResend($id_order);
+            $this->processOrder($id_order);
+
+            // Strip the flag from the URL so a page refresh (or clicking
+            // the browser back/forward button) can never silently re-fire
+            // the resend and reset the attempts counter.
+            header('Location: ' . $this->getCurrentUrl());
+            exit;
+        }
+
+        $row = $this->getQueueStatus($id_order);
+        $reference = $row ? $row['dropday_reference'] : null;
+
+        $this->context->smarty->assign([
+            'dropday_status' => $row ? $row['status'] : 'never',
+            'dropday_attempts' => $row ? (int) $row['attempts'] : 0,
+            'dropday_reference' => $reference,
+            'dropday_order_url' => $reference ? $this->getOrderUrl($reference) : null,
+            'dropday_last_error' => $row ? $row['last_error'] : null,
+            'dropday_resend_url' => $this->getResendUrl(),
+            'dropday_new_theme' => $newTheme,
+        ]);
+
+        return $this->context->smarty->fetch($this->local_path . 'views/templates/admin/order_status.tpl');
+    }
+
+    /**
+     * @param string $reference Dropday order reference.
+     * @return string
+     */
+    protected function getOrderUrl($reference)
+    {
+        return 'https://dropday.io/dashboard/order/' . urlencode($reference);
+    }
+
+    /**
+     * The exact URL that rendered the current order page (legacy
+     * query-string or new Symfony route - whichever this page is already
+     * using, with its already-valid token), with any dropday_resend flag
+     * stripped out.
+     *
+     * @return string
+     */
+    protected function getCurrentUrl()
+    {
+        $parts = parse_url($_SERVER['REQUEST_URI']);
+        $path = isset($parts['path']) ? $parts['path'] : '';
+
+        $query = [];
+        if (isset($parts['query'])) {
+            parse_str($parts['query'], $query);
+        }
+        unset($query['dropday_resend']);
+
+        return $path . (!empty($query) ? '?' . http_build_query($query) : '');
+    }
+
+    /**
+     * Same page, with the resend flag added, so clicking the button lands
+     * back on this very same page.
+     *
+     * @return string
+     */
+    protected function getResendUrl()
+    {
+        $separator = (strpos($this->getCurrentUrl(), '?') === false) ? '?' : '&';
+
+        return $this->getCurrentUrl() . $separator . 'dropday_resend=1';
     }
 
     /**
