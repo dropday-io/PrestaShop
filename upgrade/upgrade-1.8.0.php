@@ -22,7 +22,23 @@ if (!defined('_PS_VERSION_')) {
  */
 function upgrade_module_1_8_0($module)
 {
-    if (!Db::getInstance()->execute($module->queueTableSql())) {
+    require_once dirname(__FILE__) . '/../classes/DropdayOrder.php';
+
+    $sql = 'CREATE TABLE IF NOT EXISTS `' . DropdayOrder::tableName() . '` (
+        `id_order` INT UNSIGNED NOT NULL,
+        `status` VARCHAR(16) NOT NULL DEFAULT \'' . DropdayOrder::STATUS_PENDING . '\',
+        `attempts` SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+        `locked_until` DATETIME NULL,
+        `last_http_code` SMALLINT NULL,
+        `last_error` TEXT NULL,
+        `dropday_reference` VARCHAR(64) NULL,
+        `date_add` DATETIME NOT NULL,
+        `date_upd` DATETIME NOT NULL,
+        PRIMARY KEY (`id_order`),
+        KEY `idx_status_date` (`status`, `date_add`)
+    ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8';
+
+    if (!Db::getInstance()->execute($sql)) {
         return false;
     }
 

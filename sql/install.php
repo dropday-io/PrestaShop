@@ -26,7 +26,19 @@
 
 $sql = array();
 
-$sql[] = $this->queueTableSql();
+$sql[] = 'CREATE TABLE IF NOT EXISTS `' . DropdayOrder::tableName() . '` (
+    `id_order` INT UNSIGNED NOT NULL,
+    `status` VARCHAR(16) NOT NULL DEFAULT \'' . DropdayOrder::STATUS_PENDING . '\',
+    `attempts` SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+    `locked_until` DATETIME NULL,
+    `last_http_code` SMALLINT NULL,
+    `last_error` TEXT NULL,
+    `dropday_reference` VARCHAR(64) NULL,
+    `date_add` DATETIME NOT NULL,
+    `date_upd` DATETIME NOT NULL,
+    PRIMARY KEY (`id_order`),
+    KEY `idx_status_date` (`status`, `date_add`)
+) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8';
 
 foreach ($sql as $query) {
     if (Db::getInstance()->execute($query) == false) {

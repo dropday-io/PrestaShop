@@ -31,7 +31,7 @@
  */
 $sql = array();
 
-$sql[] = 'DROP TABLE IF EXISTS `' . $this->queueTable() . '`';
+$sql[] = 'DROP TABLE IF EXISTS `' . DropdayOrder::tableName() . '`';
 
 foreach ($sql as $query) {
     if (Db::getInstance()->execute($query) == false) {
