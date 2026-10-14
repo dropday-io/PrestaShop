@@ -94,18 +94,7 @@ class DropdayOrder extends ObjectModel
      */
     public static function tableName()
     {
-        return _DB_PREFIX_ . 'dropday_order';
-    }
-
-    /**
-     * @param int $id_order
-     * @return static|null
-     */
-    public static function loadByIdOrder($id_order)
-    {
-        $queueOrder = new static((int) $id_order);
-
-        return Validate::isLoadedObject($queueOrder) ? $queueOrder : null;
+        return _DB_PREFIX_ . self::$definition['table'];
     }
 
     /**

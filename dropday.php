@@ -366,9 +366,9 @@ class Dropday extends Module
     {
         $id_order = (int) $id_order;
 
-        $queueOrder = DropdayOrder::loadByIdOrder($id_order);
+        $queueOrder = new DropdayOrder($id_order);
 
-        if ($queueOrder) {
+        if (Validate::isLoadedObject($queueOrder)) {
             // Never resurrect an order that's already finished (sent or
             // permanently failed) into a retryable state.
             if (in_array($queueOrder->status, [DropdayOrder::STATUS_SENT, DropdayOrder::STATUS_FAILED], true)) {
@@ -394,9 +394,10 @@ class Dropday extends Module
      */
     protected function isFinalized($id_order)
     {
-        $queueOrder = DropdayOrder::loadByIdOrder($id_order);
+        $queueOrder = new DropdayOrder((int) $id_order);
 
-        return $queueOrder && in_array($queueOrder->status, [DropdayOrder::STATUS_SENT, DropdayOrder::STATUS_FAILED], true);
+        return Validate::isLoadedObject($queueOrder)
+            && in_array($queueOrder->status, [DropdayOrder::STATUS_SENT, DropdayOrder::STATUS_FAILED], true);
     }
 
     /**
@@ -405,7 +406,9 @@ class Dropday extends Module
      */
     public function getQueueStatus($id_order)
     {
-        return DropdayOrder::loadByIdOrder($id_order);
+        $queueOrder = new DropdayOrder((int) $id_order);
+
+        return Validate::isLoadedObject($queueOrder) ? $queueOrder : null;
     }
 
     /**
@@ -417,9 +420,9 @@ class Dropday extends Module
      */
     protected function updateQueueRow($id_order, $status, $httpCode = null, $error = null, $reference = null)
     {
-        $queueOrder = DropdayOrder::loadByIdOrder($id_order);
+        $queueOrder = new DropdayOrder((int) $id_order);
 
-        if (!$queueOrder) {
+        if (!Validate::isLoadedObject($queueOrder)) {
             return;
         }
 
@@ -444,11 +447,10 @@ class Dropday extends Module
     {
         $id_order = (int) $id_order;
 
-        $queueOrder = DropdayOrder::loadByIdOrder($id_order);
-        $isNew = !$queueOrder;
+        $queueOrder = new DropdayOrder($id_order);
+        $isNew = !Validate::isLoadedObject($queueOrder);
 
         if ($isNew) {
-            $queueOrder = new DropdayOrder();
             $queueOrder->id_order = $id_order;
         }
 
