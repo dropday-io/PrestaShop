@@ -97,8 +97,6 @@ class Dropday extends Module
      */
     public function uninstall()
     {
-        $this->uninstallDb();
-
         return parent::uninstall();
     }
 
@@ -108,14 +106,6 @@ class Dropday extends Module
     protected function installDb()
     {
         return (bool) include dirname(__FILE__) . '/sql/install.php';
-    }
-
-    /**
-     * @return bool
-     */
-    protected function uninstallDb()
-    {
-        return (bool) include dirname(__FILE__) . '/sql/uninstall.php';
     }
 
     /**
