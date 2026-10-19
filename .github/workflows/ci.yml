@@ -46,6 +46,15 @@ jobs:
       - name: Run Dropday order hook test
         run: docker compose exec -T apache php /var/www/html/modules/dropday/.github/ci/SendOrderToDropdayOnPaymentAcceptedTest.php
 
+      - name: Run Dropday network error queueing test
+        run: docker compose exec -T apache php /var/www/html/modules/dropday/.github/ci/SendOrderToDropdayQueuesOnNetworkErrorTest.php
+
+      - name: Run Dropday permanent failure retry test
+        run: docker compose exec -T apache php /var/www/html/modules/dropday/.github/ci/SendOrderToDropdayDoesNotRetryPermanentFailureTest.php
+
+      - name: Run Dropday failed order status test
+        run: docker compose exec -T apache php /var/www/html/modules/dropday/.github/ci/SendOrderToDropdayKeepsFailedOrderFailedTest.php
+
       - name: Dump logs on failure
         if: failure()
         run: docker compose logs
