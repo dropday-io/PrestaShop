@@ -46,7 +46,12 @@
     <p class="text-muted mb-1 mt-1">
         {l s='Sending now ignores the order status rule in the settings.' mod='dropday'}
     </p>
-{elseif $dropday_status != 'sent'}
+{elseif $dropday_status == 'sent'}
+    <a href="{$dropday_resend_url}" class="btn {if $dropday_new_theme}btn-outline-secondary{else}btn-default{/if} btn-sm"
+       onclick="return confirm('{l s='This order was already sent to Dropday. Only send it again if it no longer exists in Dropday, otherwise it may be processed twice. Continue?' mod='dropday' js=1}');">
+        {l s='Send to Dropday again' mod='dropday'}
+    </a>
+{else}
     <a href="{$dropday_resend_url}" class="btn {if $dropday_new_theme}btn-outline-secondary{else}btn-default{/if} btn-sm">
         {l s='Send to Dropday again' mod='dropday'}
     </a>
