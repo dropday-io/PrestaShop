@@ -55,6 +55,9 @@ jobs:
       - name: Run Dropday failed order status test
         run: docker compose exec -T apache php /var/www/html/modules/dropday/.github/ci/SendOrderToDropdayKeepsFailedOrderFailedTest.php
 
+      - name: Run Dropday resend sent order test
+        run: docker compose exec -T apache php /var/www/html/modules/dropday/.github/ci/SendOrderToDropdayResendsSentOrderTest.php
+
       - name: Dump logs on failure
         if: failure()
         run: docker compose logs
